@@ -8,9 +8,9 @@ The Account tab supports email-code sign-in, requesting clinician access to an a
 
 `supabase/migrations/202611010001_staff_access.sql` creates staff-only tables, RLS policies and narrow RPCs. Clients have no direct write privileges on membership, request status or audit tables. Anonymous patient sessions cannot request staff access. An administrator membership alone does not pass the clinician scope check. Future clinical policies must explicitly use the scoped clinician check and the separate patient admission check.
 
-## Project setup (not yet performed remotely)
+## Project setup (staff migration applied; remaining steps pending)
 
-1. Sign in to the existing Supabase dashboard as project owner. Review the migration and apply it once through the project's SQL editor or an authenticated Supabase migration workflow. No service-role key belongs in the iOS app.
+1. **Completed on 1 November 2026:** signed in as project owner and applied the exact reviewed migration through the SQL editor after explicit confirmation. Five read-only live checks passed. Do not run the migration again; the tables now exist. No service-role key belongs in the iOS app.
 2. Configure the Auth **Magic Link** email template to include `{{ .Token }}` for code entry; verify email provider settings, rate limits and delivery. The app uses `/auth/v1/otp` and `/auth/v1/verify` with verification type `email`. Dashboard sign-in and application Auth users are separate accounts.
 3. Sign in through the app to create and verify the intended staff Auth identity. The project owner must verify that user's identity in Authentication → Users.
 4. Bootstrap the initial administrator using that verified **Auth user UUID** through the project-owner SQL session. Never select an administrator from untrusted client metadata. Insert a membership with `role = 'administrator'` and `scope_id = null`. This privilege change requires review at the time it is performed. No administrator is seeded by the migration.
@@ -28,7 +28,8 @@ Use the Supabase [passwordless email guide](https://supabase.com/docs/guides/aut
 - Project generation and `plutil` validation passed.
 - Updated native iOS build and launch succeeded through Xcode on iPhone 17e / iOS 27.2. The Account screen was verified both without configuration and with the configured email-code form. A smoke check found that custom generated Info.plist build settings did not embed the backend keys; an explicit Config/Info.plist fixed this. The built app now contains the correct project URL and public client key. End-to-end Auth sign-in remains pending. Command-line macro compilation is still restricted by the execution sandbox.
 - The iPhone simulator reconnected and the earlier demo launched. Full corrected-tray-to-results walkthrough, iPad layout, and drag/drop gesture QA remain incomplete.
-- Supabase dashboard sign-in is verified. Read-only preflight found no public tables and no application Auth user for the intended administrator. The exact tested migration is prepared in the SQL editor and awaits action-time confirmation before execution. No remote migration or administrator bootstrap has been performed.
+- Supabase dashboard sign-in is verified. Preflight found no public tables and no application Auth user for the intended administrator. After explicit confirmation, the exact tested migration was applied successfully. Five read-only live checks passed: four tables with RLS, no direct client writes, four read policies, three protected RPCs, and no administrator seeded. Administrator bootstrap is still pending.
+- The project currently uses Supabase default email delivery and a link-only template. The dashboard disables template editing without custom SMTP or a Pro upgrade. No plan, SMTP, template, or security setting was changed. Email-code delivery and end-to-end sign-in remain blocked on email service setup.
 
 Run the database checks in an isolated environment with a trusted installation of `@electric-sql/pglite`:
 
