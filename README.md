@@ -20,10 +20,10 @@ Use the Clinician preview to assign a challenge, switch to Patient, play and sha
 ## Verification
 
 ```sh
-swift test
+DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcrun swift test
 ```
 
-The XCTest suite requires Xcode. For command-line installations without XCTest:
+The explicit developer directory uses full Xcode even if the system still selects Command Line Tools. See `docs/VALIDATION.md` for the latest verification record. For command-line installations without XCTest:
 
 ```sh
 swiftc Sources/SamificationCore/*.swift scripts/VerifyCore.swift -o /tmp/samification-check
