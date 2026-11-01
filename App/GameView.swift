@@ -1,0 +1,155 @@
+import SwiftUI
+
+struct GameView: View {
+    @Environment(DemoStore.self) private var store
+    let challengeID: UUID
+    @State private var activePeriod: DayPeriod = .morning
+    @State private var showingFeedback = false
+    @State private var showingHint = false
+    private var challenge: Challenge? { store.challenges.first { $0.id == challengeID } }
+    var body: some View {
+        ScrollView {
+            if let c = challenge {
+                VStack(alignment: .leading, spacing: 20) {
+                    Text("Select a compartment, then tap a pill to add it. Drag a pill directly into any compartment. Tap a tray tablet to remove it.")
+                    if c.priorExposure { Notice(text: "Earlier exposure to this regimen is recorded.", color: .orange) }
+                    if c.superseded { Notice(text: "This regimen has been replaced. Open the latest challenge.", color: .red) }
+                    DisclosureGroup("Your medication reference card") {
+                        VStack(alignment: .leading, spacing: 12) {
+                            ForEach(c.medications) { m in
+                                VStack(alignment: .leading) {
+                                    Text("\(m.code) · \(m.name)").font(.headline)
+                                    Text("\(m.doseMG.formatted()) mg · \(m.quantity ?? 0) tablet(s) · \(DayPeriod.allCases.filter { m.periods.contains($0) }.map(\.title).joined(separator: ", "))")
+                                    if !m.directions.isEmpty { Text(m.directions).foregroundStyle(.secondary) }
+                                }
+                            }
+                        }.padding(.top)
+                    }.padding().background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 150), alignment: .top)], alignment: .leading, spacing: 16) {
+                        ForEach(c.medications) { m in
+                            MedicationBag(medication: m, disabled: c.locked) {
+                                store.update(c.id) { $0.add(m.id, at: activePeriod) }; edited()
+                            }
+                        }
+                    }
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack { Text("Your daily tray").font(.headline); Spacer(); Text("Taps add to \(activePeriod.title)").font(.caption) }
+                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 145), alignment: .top)], spacing: 12) {
+                            ForEach(DayPeriod.allCases) { period in
+                                compartment(c, period)
+                            }
+                        }
+                    }.padding().background(Color.brown.opacity(0.12), in: RoundedRectangle(cornerRadius: 20))
+                    Button("Clear all", systemImage: "arrow.counterclockwise") { store.update(c.id) { $0.clear() }; edited() }
+                        .buttonStyle(.bordered).disabled(c.locked || c.tray.isEmpty)
+                    HStack { Spacer(); Button("Check my daily tray") { store.update(c.id) { $0.submit() }; showingFeedback = true; showingHint = false }.buttonStyle(.borderedProminent).controlSize(.large).disabled(c.locked); Spacer() }
+                    if showingFeedback, let attempt = c.attempts.last {
+                        Notice(text: attempt.score.correct ? "Correct! Your daily tray matches." : "Let’s review your tray. Check the quantities and day periods below.", color: attempt.score.correct ? .green : .red)
+                        if !attempt.score.correct {
+                            ForEach(attempt.score.findings) { f in
+                                Text("\(name(f.medicationID, in: c)) · \(f.period.title): expected \(f.expected), submitted \(f.actual)").font(.subheadline).foregroundStyle(.red)
+                            }
+                        }
+                    }
+                    if let last = c.attempts.last, !last.score.correct, !c.locked {
+                        Button("Ask for a hint") { store.update(c.id) { _ = $0.showHint() }; showingHint = true }
+                            .foregroundStyle(.red).padding(10).overlay(RoundedRectangle(cornerRadius: 10).stroke(.red, lineWidth: 1))
+                    }
+                    if showingHint {
+                        Notice(text: c.medications.map { m in "\(m.code): \(m.quantity ?? 0) tablet(s) in \(DayPeriod.allCases.filter { m.periods.contains($0) }.map(\.title).joined(separator: ", "))." }.joined(separator: " "))
+                    }
+                    if !c.attempts.isEmpty, !c.locked {
+                        Button(c.attempts.last?.score.correct == true ? "Finish & share results" : "End challenge & share results") {
+                            store.update(c.id) { _ = $0.share() }; store.message = "Results are now visible in the clinician preview on this device."
+                        }.buttonStyle(.borderedProminent).disabled(!c.canShare)
+                        if !c.canShare { Text("Check the updated tray before sharing.").font(.caption).foregroundStyle(.secondary) }
+                    }
+                    if c.shared { Notice(text: "Results shared in this demo. This challenge is now read-only.") }
+                    Text("Submissions: \(c.attempts.count) · Hints: \(c.hintCount)").font(.subheadline).foregroundStyle(.secondary)
+                    Text("Package photos are supplied demo references. Pill icons are illustrative. This challenge scores quantities and day periods; food instructions are displayed but not scored.").font(.caption).foregroundStyle(.secondary)
+                }.padding().frame(maxWidth: 950).frame(maxWidth: .infinity)
+            }
+        }.navigationTitle("Plan your medication day").navigationBarTitleDisplayMode(.inline)
+            .onAppear {
+                guard let c = challenge else { return }
+                let prior = store.challenges.contains { $0.id != c.id && $0.regimenVersion == c.regimenVersion && !$0.attempts.isEmpty }
+                store.update(c.id) { $0.start(priorExposure: prior) }
+            }
+    }
+    private func edited() { showingFeedback = false; showingHint = false }
+    private func name(_ id: UUID, in c: Challenge) -> String { c.medications.first { $0.id == id }?.code ?? "Unknown medication" }
+    private func compartment(_ c: Challenge, _ period: DayPeriod) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Button { activePeriod = period } label: {
+                Label(period.title, systemImage: period.symbol).font(.headline).frame(maxWidth: .infinity).padding(.vertical, 10)
+            }.buttonStyle(.bordered).tint(activePeriod == period ? .teal : .secondary).disabled(c.locked)
+            FlowPills(challenge: c, period: period, assessed: showingFeedback) { id in
+                store.update(c.id) { $0.remove(id, at: period) }; edited()
+            }
+            Spacer(minLength: 0)
+        }.padding(10).frame(minHeight: 185).background(.background, in: RoundedRectangle(cornerRadius: 16))
+            .overlay(RoundedRectangle(cornerRadius: 16).stroke(activePeriod == period ? Color.teal : Color.secondary.opacity(0.3), lineWidth: activePeriod == period ? 3 : 1))
+            .dropDestination(for: String.self) { items, _ in
+                guard !c.locked, items.count == 1, let id = UUID(uuidString: items[0]), c.medications.contains(where: { $0.id == id }) else { return false }
+                activePeriod = period; store.update(c.id) { $0.add(id, at: period) }; edited(); return true
+            }
+    }
+}
+
+struct MedicationBag: View {
+    let medication: Medication
+    let disabled: Bool
+    let add: () -> Void
+    var body: some View {
+        VStack(spacing: 12) {
+            VStack(spacing: 4) {
+                Capsule().fill(.teal.opacity(0.6)).frame(height: 3)
+                Capsule().fill(.teal.opacity(0.3)).frame(height: 2)
+            }
+            VStack(spacing: 6) {
+                Text("MEDICATION \(medication.code)").font(.caption).foregroundStyle(.secondary)
+                Text(medication.name).font(.headline).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
+                Text("\(medication.strengthMG.formatted()) mg / tablet").font(.subheadline)
+            }.frame(maxWidth: .infinity).padding(8).background(.background, in: RoundedRectangle(cornerRadius: 8))
+            if let image = medication.visibleImage {
+                Image(image).resizable().scaledToFit().frame(height: 90).accessibilityLabel("Example package for \(medication.name)")
+            }
+            Button(action: add) { VStack(spacing: 8) { PillIcon(code: medication.code); Text("Tap / drag").font(.caption) }.frame(maxWidth: .infinity).padding(.vertical, 6) }
+                .buttonStyle(.plain).disabled(disabled).draggable(medication.id.uuidString)
+                .accessibilityLabel("Add one \(medication.name) tablet to selected compartment")
+        }.padding(12).frame(maxWidth: .infinity).background(.teal.opacity(0.08), in: RoundedRectangle(cornerRadius: 15))
+            .overlay(RoundedRectangle(cornerRadius: 15).stroke(.teal.opacity(0.4), lineWidth: 1))
+    }
+}
+
+struct PillIcon: View {
+    let code: String
+    var error = false
+    var body: some View {
+        Text(error ? "\(code) ×" : code).font(.headline).foregroundStyle(error ? Color.red : Color.primary)
+            .frame(minWidth: 44, minHeight: 34).padding(.horizontal, 4)
+            .background(error ? Color.red.opacity(0.15) : Color.teal.opacity(0.15), in: Capsule())
+            .overlay(Capsule().stroke(error ? Color.red : Color.teal.opacity(0.35)))
+    }
+}
+
+struct FlowPills: View {
+    let challenge: Challenge
+    let period: DayPeriod
+    let assessed: Bool
+    let remove: (UUID) -> Void
+    var body: some View {
+        let total = challenge.medications.reduce(0) { $0 + challenge.tray.count($1.id, at: period) }
+        if total == 0 { Text("Drop here").font(.subheadline).foregroundStyle(.secondary).frame(maxWidth: .infinity, minHeight: 70) }
+        LazyVGrid(columns: [GridItem(.adaptive(minimum: 48))], spacing: 10) {
+            ForEach(challenge.medications) { m in
+                ForEach(0..<challenge.tray.count(m.id, at: period), id: \.self) { index in
+                    let expected = m.periods.contains(period) ? (m.quantity ?? 0) : 0
+                    Button { remove(m.id) } label: { PillIcon(code: m.code, error: assessed && index >= expected).frame(minHeight: 44) }
+                        .buttonStyle(.plain).disabled(challenge.locked)
+                        .accessibilityLabel("Remove one \(m.name) tablet from \(period.title)")
+                }
+            }
+        }
+    }
+}
