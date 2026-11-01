@@ -23,3 +23,11 @@ This was manual SQL-editor execution, not a Supabase CLI migration push. Do not 
 The intended administrator has no application Auth identity yet. Dashboard login is a separate identity system. Complete application sign-in, verify that account’s email, then review and confirm the administrator membership grant separately.
 
 The current default Magic Link/OTP email is link-only. Supabase’s dashboard requires custom SMTP or Pro to edit it. No paid upgrade, email provider connection or template change was performed. Email-code sign-in requires that setup. See `docs/STAFF_ACCESS.md`.
+
+## Clinical and patient-pairing activation — 1 November 2026
+
+Following separate explicit approval, deployed migrations 002 and 003 in one atomic transaction using the prepared activation bundle. Source checkpoint: `de4df2ba516d93ba9597376ab640159334fd6639`. Bundle SHA-256: `9bd15fc2eca532eb207b25bdf6f05a05ea2dd62083f620f75579097d864d1e60`. The live SQL editor content was checked against that bundle before Run. No users, scopes, staff memberships or clinical records were seeded.
+
+Enabled **Allow anonymous sign-ins** and saved it in Supabase Auth. Email confirmation remains enabled; manual identity linking remains disabled. No email service, paid plan or administrator grant was changed.
+
+Six live schema/grant checks and 13 real Auth/API checks passed. One temporary unpaired Auth identity was created for verification and signed out; the user record was not permanently deleted. No clinical records were created. See `docs/CONNECTED_WORKFLOW.md` for the verified cases and remaining end-to-end limits. These migrations were executed manually through SQL Editor and still require migration-history reconciliation before future CLI-managed deployment.
