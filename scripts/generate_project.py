@@ -41,7 +41,7 @@ for config in ['Debug', 'Release']:
         'SWIFT_ACTIVE_COMPILATION_CONDITIONS': 'DEBUG' if config == 'Debug' else '',
     }}))
     target_configs.append(obj('target-' + config, {'isa': 'XCBuildConfiguration', 'name': config, 'baseConfigurationReference': config_ref, 'buildSettings': {
-        'INFOPLIST_KEY_SUPABASE_URL': '$(SUPABASE_URL)', 'INFOPLIST_KEY_SUPABASE_PUBLISHABLE_KEY': '$(SUPABASE_PUBLISHABLE_KEY)',
+        'INFOPLIST_FILE': 'Config/Info.plist',
         'PRODUCT_BUNDLE_IDENTIFIER': 'com.edmundliew.samification', 'PRODUCT_NAME': '$(TARGET_NAME)',
         'GENERATE_INFOPLIST_FILE': 'YES', 'INFOPLIST_KEY_CFBundleDisplayName': 'Samification',
         'INFOPLIST_KEY_UILaunchScreen_Generation': 'YES', 'TARGETED_DEVICE_FAMILY': '1,2',

@@ -154,8 +154,7 @@
 			"name" = "Debug";
 			"baseConfigurationReference" = "E01A37539DD44DE20F00A582";
 			"buildSettings" = {
-				"INFOPLIST_KEY_SUPABASE_URL" = "$(SUPABASE_URL)";
-				"INFOPLIST_KEY_SUPABASE_PUBLISHABLE_KEY" = "$(SUPABASE_PUBLISHABLE_KEY)";
+				"INFOPLIST_FILE" = "Config/Info.plist";
 				"PRODUCT_BUNDLE_IDENTIFIER" = "com.edmundliew.samification";
 				"PRODUCT_NAME" = "$(TARGET_NAME)";
 				"GENERATE_INFOPLIST_FILE" = "YES";
@@ -191,8 +190,7 @@
 			"name" = "Release";
 			"baseConfigurationReference" = "E01A37539DD44DE20F00A582";
 			"buildSettings" = {
-				"INFOPLIST_KEY_SUPABASE_URL" = "$(SUPABASE_URL)";
-				"INFOPLIST_KEY_SUPABASE_PUBLISHABLE_KEY" = "$(SUPABASE_PUBLISHABLE_KEY)";
+				"INFOPLIST_FILE" = "Config/Info.plist";
 				"PRODUCT_BUNDLE_IDENTIFIER" = "com.edmundliew.samification";
 				"PRODUCT_NAME" = "$(TARGET_NAME)";
 				"GENERATE_INFOPLIST_FILE" = "YES";

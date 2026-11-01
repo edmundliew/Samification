@@ -50,4 +50,4 @@ Package photos were supplied by the project owner for the demo. They are not ver
 
 ## Staff access development checkpoint
 
-The Account tab and Supabase staff-access migration are in development for v0.2. The stable v0.1.0 tag remains the offline preview. This checkpoint has 12 passing Swift tests and 26 isolated PostgreSQL checks; remote migration, Auth configuration and updated native UI verification remain pending. See [staff access setup and validation](docs/STAFF_ACCESS.md).
+The Account tab and Supabase staff-access migration are in development for v0.2. The stable v0.1.0 tag remains the offline preview. This checkpoint has 12 passing Swift tests and 26 isolated PostgreSQL checks; the updated Account screen builds and renders on the iPhone simulator. Remote migration, Auth configuration and end-to-end sign-in remain pending. See [staff access setup and validation](docs/STAFF_ACCESS.md).

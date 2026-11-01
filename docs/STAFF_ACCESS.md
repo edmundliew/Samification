@@ -26,9 +26,9 @@ Use the Supabase [passwordless email guide](https://supabase.com/docs/guides/aut
 - Isolated PostgreSQL runtime: **26 access-control checks passed**, including blocked self-approval, anonymous staff requests, direct status/membership/audit writes, wrong scopes, immediate suspension, and no implicit clinician rights for administrators.
 - Tests apply the actual migration in PGlite 0.5.14 with a small mock of Supabase's `auth.uid()` / `auth.jwt()` functions. They do not validate the live project's Auth gateway, email delivery, JWT verification, configuration or existing database state.
 - Project generation and `plutil` validation passed.
-- Updated native UI build and end-to-end sign-in remain unverified. Command-line iOS compilation was blocked by nested compiler macro sandbox restrictions. Xcode UI automation timed out while opening the project. The earlier v0.1 simulator build does not validate the new Account screen.
+- Updated native iOS build and launch succeeded through Xcode on iPhone 17e / iOS 27.2. The Account screen was verified both without configuration and with the configured email-code form. A smoke check found that custom generated Info.plist build settings did not embed the backend keys; an explicit Config/Info.plist fixed this. The built app now contains the correct project URL and public client key. End-to-end Auth sign-in remains pending. Command-line macro compilation is still restricted by the execution sandbox.
 - The iPhone simulator reconnected and the earlier demo launched. Full corrected-tray-to-results walkthrough, iPad layout, and drag/drop gesture QA remain incomplete.
-- The remote Supabase project has **not** been migrated or bootstrapped. Dashboard sign-in is pending.
+- Supabase dashboard sign-in is verified. Read-only preflight found no public tables and no application Auth user for the intended administrator. The exact tested migration is prepared in the SQL editor and awaits action-time confirmation before execution. No remote migration or administrator bootstrap has been performed.
 
 Run the database checks in an isolated environment with a trusted installation of `@electric-sql/pglite`:
 
