@@ -26,3 +26,7 @@ The Swift API client encodes the confirmed medication snapshot and original sour
 - Complete correct-answer UI walkthrough, final clinician review entry, iPad/touch/drag testing and TestFlight signing are not yet complete. Automated core tests cover correct submissions and saved reviews.
 
 No email service, paid plan, administrator grant or remote clinical migration was changed for this checkpoint. The existing deployed staff-access migration remains unchanged.
+
+## Later connected UI checkpoint
+
+Connected clinician and patient screens have since been added. The 23/69 totals above describe this earlier checkpoint. See `docs/CONNECTED_WORKFLOW.md` for current 28 Swift tests, 112 PostgreSQL checks, pairing behavior and live activation limits.

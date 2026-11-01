@@ -32,6 +32,35 @@ public enum WorkflowError: Error, LocalizedError {
     }
 }
 
+public enum RegimenValidation {
+    public static func issues(for draft: [Medication]) -> [String] {
+        let included = draft.filter(\.included)
+        var errors = draft.flatMap(\.issues)
+        if included.isEmpty { errors.append("Include at least one supported medicine.") }
+        if draft.count > 20 { errors.append("A regimen supports at most 20 medicine rows.") }
+        let names = included.map { $0.name.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() }
+        if Set(names).count != names.count { errors.append("Resolve duplicate included medication names.") }
+        if Set(included.map(\.id)).count != included.count || Set(included.map(\.code)).count != included.count { errors.append("Medication identifiers must be unique.") }
+        return errors
+    }
+}
+
+public struct PendingAdmissionSave: Sendable {
+    public let id: UUID
+    public let scope: UUID
+    public let alias: String
+    public init(scope: UUID, alias: String) { id = UUID(); self.scope = scope; self.alias = alias }
+}
+public struct PendingRegimenSave: Sendable {
+    public let id: UUID
+    public let admissionID: UUID
+    public let medications: [Medication]
+    public let sourceCSV: String?
+    public init(admissionID: UUID, medications: [Medication], sourceCSV: String?) {
+        id = UUID(); self.admissionID = admissionID; self.medications = medications; self.sourceCSV = sourceCSV
+    }
+}
+
 public struct PatientCase: Identifiable, Codable, Sendable {
     public let id: UUID
     public let label: String
@@ -48,16 +77,7 @@ public struct PatientCase: Identifiable, Codable, Sendable {
         let medications = DemoData.medications
         draft = medications; regimens = [RegimenVersion(number: 1, medications: medications)]
     }
-    public var validation: [String] {
-        let included = draft.filter(\.included)
-        var errors = draft.flatMap(\.issues)
-        if included.isEmpty { errors.append("Include at least one supported medicine.") }
-        if draft.count > 20 { errors.append("A regimen supports at most 20 medicine rows.") }
-        let names = included.map { $0.name.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() }
-        if Set(names).count != names.count { errors.append("Resolve duplicate included medication names.") }
-        if Set(included.map(\.id)).count != included.count || Set(included.map(\.code)).count != included.count { errors.append("Medication identifiers must be unique.") }
-        return errors
-    }
+    public var validation: [String] { RegimenValidation.issues(for: draft) }
     public mutating func importCSV(_ text: String) throws {
         let imported = try CSVImporter.medications(from: text)
         draft = imported; draftSourceCSV = text

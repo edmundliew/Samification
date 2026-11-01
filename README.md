@@ -6,7 +6,7 @@ Medication tray assessment prototype for iPhone and iPad. Bundle identifier: `co
 
 The clinician workflow now supports multiple fictional patients with separate CSV drafts, immutable confirmed regimen versions, assignments, tray evidence and reviews. The workspace is saved locally and restored after app restart. The four demo medications are preconfirmed for each new fictional patient. Product references and photos can be browsed separately from patient prescriptions.
 
-The Account screen and staff-access Supabase migration are present. The staff migration is deployed; email setup and initial administrator provisioning are deferred. The next migration and API client for admissions, regimen versions, assignments and discharge are prepared and tested locally, but **not deployed or wired into the clinical UI yet**. Patient pairing, cross-device clinical sharing and server-side scoring remain pending. Role switching still controls only fictional local previews.
+The Account screen and staff-access Supabase migration are present. The staff migration is deployed; email setup and initial administrator provisioning are deferred. Connected clinician screens now call the admissions, regimen confirmation and assignment API. Clinician pairing and patient Join screens are implemented, with a temporary patient identity and restricted medication-reference inbox. The clinical and pairing migrations are prepared and tested locally but **not deployed**; anonymous Auth activation, initial staff provisioning, live cross-device validation and server-scored game submissions remain pending. Role switching still controls only fictional local previews.
 
 This is a development source checkpoint, not a clinically validated or signed distribution. Use fictional data only. The stable `v0.1.0` tag retains the original session-only preview. See [current workflow validation](docs/CORE_WORKFLOW.md) and [release history](docs/RELEASES.md).
 
@@ -52,4 +52,6 @@ Package photos were supplied by the project owner for the demo. They are not ver
 
 ## Backend checkpoints
 
-Twenty-three Swift tests and 69 isolated PostgreSQL checks pass (26 staff access + 43 clinical workflow). The staff migration's five live schema/grant checks also passed. See [staff access](docs/STAFF_ACCESS.md), [deployment record](docs/BACKEND_DEPLOYMENT.md) and [current workflow](docs/CORE_WORKFLOW.md). Email sender configuration is a backend setting, independent of role approval and the recipient’s email domain; see [email configuration boundary](docs/EMAIL_CONFIGURATION.md).
+Twenty-eight Swift tests and 112 isolated PostgreSQL checks pass (26 staff access + 53 clinical workflow + 33 patient pairing). The staff migration's five live schema/grant checks also passed. See [staff access](docs/STAFF_ACCESS.md), [deployment record](docs/BACKEND_DEPLOYMENT.md) and [current workflow](docs/CORE_WORKFLOW.md). Email sender configuration is a backend setting, independent of role approval and the recipient’s email domain; see [email configuration boundary](docs/EMAIL_CONFIGURATION.md).
+
+See [connected workflow and pairing validation](docs/CONNECTED_WORKFLOW.md) for the latest development checkpoint.

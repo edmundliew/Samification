@@ -15,11 +15,7 @@ import Observation
     var notice: String?
     var failed = false
     var codeSent = false
-    private var client: StaffAccessClient? {
-        guard let url = Bundle.main.object(forInfoDictionaryKey: "SUPABASE_URL") as? String,
-              let key = Bundle.main.object(forInfoDictionaryKey: "SUPABASE_PUBLISHABLE_KEY") as? String else { return nil }
-        return try? StaffAccessClient(url: url, publishableKey: key)
-    }
+    private var client: StaffAccessClient? { BackendConfiguration.client() }
     var configured: Bool { client != nil }
     var administrator: Bool { memberships.contains { $0.user_id == session?.user.id && $0.role == "administrator" && $0.active } }
     var emailValid: Bool { email.contains("@") && email.count <= 254 && !email.contains(where: \.isWhitespace) }
@@ -100,7 +96,7 @@ struct StaffAccountView: View {
         Form {
             Section {
                 Text("Connected staff access · Development preview").font(.headline)
-                Text("This screen manages Supabase staff access. Medication assignments and results elsewhere in the app remain the offline demo. Patient pairing is not connected yet.")
+                Text("This screen manages staff access. Approved clinicians can open the connected admission workspace. Other medication tabs remain the saved local demo. Live clinician and patient connections require backend activation.")
             }
             if !account.configured {
                 Section { Notice(text: "Connected access is not configured in this build. Add the project URL and publishable key using Config/Local.xcconfig.", color: .orange) }
@@ -120,6 +116,11 @@ struct StaffAccountView: View {
                             Text(m.role == "administrator" ? "User administration" : account.scopeName(m.scope_id))
                             Text(m.active ? "Active" : "Suspended").foregroundStyle(m.active ? .green : .red)
                         }
+                    }
+                }
+                if account.memberships.contains(where: { $0.user_id == session.user.id && $0.role == "clinician" && $0.active }) {
+                    Section("Clinician workspace") {
+                        NavigationLink("Open connected admissions") { ConnectedClinicalView(account: account) }
                     }
                 }
                 Section("Request clinician access") {

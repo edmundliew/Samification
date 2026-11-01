@@ -31,16 +31,16 @@ extension StaffAccessClient {
     public func assignments(admissionID: UUID, token: String) async throws -> [ClinicalAssignment] {
         try await decode([ClinicalAssignment].self, path: "/rest/v1/clinical_assignments?select=id,admission_id,regimen_id,practice,status&admission_id=eq.\(admissionID.uuidString)&order=assigned_at.desc", token: token)
     }
-    public func createAdmission(scope: UUID, alias: String, token: String) async throws -> UUID {
+    public func createAdmission(scope: UUID, alias: String, requestID: UUID = UUID(), token: String) async throws -> UUID {
         let value = alias.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !value.isEmpty, value.count <= 100 else { throw StaffAPIError.rejected }
-        let data = try await request("/rest/v1/rpc/create_patient_admission", method: "POST", body: ["wanted_scope": scope.uuidString, "patient_alias": value], token: token)
+        let data = try await request("/rest/v1/rpc/create_patient_admission", method: "POST", body: ["wanted_scope": scope.uuidString, "patient_alias": value, "request_id": requestID.uuidString], token: token)
         return try JSONDecoder().decode(UUID.self, from: data)
     }
-    public func confirmRegimen(admissionID: UUID, medications: [Medication], sourceCSV: String?, token: String) async throws -> UUID {
-        guard !medications.isEmpty, medications.count <= 20, medications.allSatisfy({ $0.included && $0.issues.isEmpty }), (sourceCSV?.utf8.count ?? 0) <= 200_000 else { throw StaffAPIError.rejected }
+    public func confirmRegimen(admissionID: UUID, medications: [Medication], sourceCSV: String?, requestID: UUID = UUID(), token: String) async throws -> UUID {
+        guard RegimenValidation.issues(for: medications).isEmpty, medications.allSatisfy(\.included), (sourceCSV?.utf8.count ?? 0) <= 200_000 else { throw StaffAPIError.rejected }
         let snapshot = try JSONSerialization.jsonObject(with: JSONEncoder().encode(medications))
-        let data = try await request("/rest/v1/rpc/confirm_patient_regimen", method: "POST", body: ["wanted_admission": admissionID.uuidString, "medication_snapshot": snapshot, "source_csv": sourceCSV.map { $0 as Any } ?? NSNull()], token: token)
+        let data = try await request("/rest/v1/rpc/confirm_patient_regimen", method: "POST", body: ["wanted_admission": admissionID.uuidString, "medication_snapshot": snapshot, "source_csv": sourceCSV.map { $0 as Any } ?? NSNull(), "request_id": requestID.uuidString], token: token)
         return try JSONDecoder().decode(UUID.self, from: data)
     }
     // Keep assignmentID unchanged on network retry. The server deduplicates identical requests.

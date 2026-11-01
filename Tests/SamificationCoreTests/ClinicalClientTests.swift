@@ -32,6 +32,29 @@ final class ClinicalClientTests: XCTestCase {
         do { _ = try await client.confirmRegimen(admissionID: UUID(), medications: medications, sourceCSV: nil, token: "test"); XCTFail("Must reject") } catch {}
         let requests = await transport.captured(); XCTAssertTrue(requests.isEmpty)
     }
+    func testAdmissionAndRegimenRetriesPreserveRequestIDs() async throws {
+        let transport = ClinicalTransport(); let client = try client(transport)
+        let admissionRequest = PendingAdmissionSave(scope: UUID(), alias: "Fictional alias")
+        let confirmation = PendingRegimenSave(admissionID: UUID(), medications: DemoData.medications, sourceCSV: "Fictional CSV")
+        for _ in 0..<2 {
+            _ = try await client.createAdmission(scope: admissionRequest.scope, alias: admissionRequest.alias, requestID: admissionRequest.id, token: "test")
+            _ = try await client.confirmRegimen(admissionID: confirmation.admissionID, medications: confirmation.medications, sourceCSV: confirmation.sourceCSV, requestID: confirmation.id, token: "test")
+        }
+        let requests = await transport.captured()
+        let bodies = try requests.map { try JSONSerialization.jsonObject(with: $0.httpBody!) as! [String: Any] }
+        XCTAssertEqual(bodies[0]["request_id"] as? String, bodies[2]["request_id"] as? String)
+        XCTAssertEqual(bodies[1]["request_id"] as? String, bodies[3]["request_id"] as? String)
+        XCTAssertEqual(bodies[0]["request_id"] as? String, admissionRequest.id.uuidString)
+        XCTAssertEqual(bodies[1]["request_id"] as? String, confirmation.id.uuidString)
+    }
+    func testAllExcludedAndDuplicateNamesAreRejectedBeforeUpload() async throws {
+        let transport = ClinicalTransport(); let client = try client(transport)
+        var excluded = DemoData.medications; excluded = excluded.map { var m = $0; m.included = false; return m }
+        XCTAssertFalse(RegimenValidation.issues(for: excluded).isEmpty)
+        var duplicate = DemoData.medications; duplicate[1].name = duplicate[0].name
+        do { _ = try await client.confirmRegimen(admissionID: UUID(), medications: duplicate, sourceCSV: nil, token: "test"); XCTFail("Must reject duplicate names") } catch {}
+        let requests = await transport.captured(); XCTAssertTrue(requests.isEmpty)
+    }
     func testAssignmentRetryKeepsSameRequestIdentity() async throws {
         let transport = ClinicalTransport(); let client = try client(transport)
         let admission = UUID(), regimen = UUID(), assignment = UUID()

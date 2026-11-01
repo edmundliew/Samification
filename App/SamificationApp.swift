@@ -116,7 +116,8 @@ struct RootView: View {
                     NavigationStack { AssignmentView() }.tabItem { Label("Assign", systemImage: "paperplane") }.tag("assign")
                     NavigationStack { ResultsView() }.tabItem { Label("Results", systemImage: "chart.bar") }.tag("results")
                 } else if store.role == .patient {
-                    NavigationStack { PatientInboxView() }.tabItem { Label("Challenges", systemImage: "tray") }.tag("patient")
+                    NavigationStack { PatientInboxView() }.tabItem { Label("Demo", systemImage: "tray") }.tag("patient")
+                    NavigationStack { PatientConnectionView() }.tabItem { Label("Join", systemImage: "qrcode") }.tag("join")
                 } else {
                     NavigationStack { AdministratorView() }.tabItem { Label("Users", systemImage: "person.badge.key") }.tag("admin")
                 }

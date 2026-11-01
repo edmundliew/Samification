@@ -91,29 +91,42 @@ create policy regimens_clinician_read on public.regimen_versions for select to a
 create policy assignments_clinician_read on public.clinical_assignments for select to authenticated using (samification_private.can_manage_admission(admission_id));
 create policy clinical_audit_clinician_read on public.clinical_audit_events for select to authenticated using (samification_private.can_manage_admission(admission_id));
 
-create function public.create_patient_admission(wanted_scope uuid, patient_alias text) returns uuid
+create function public.create_patient_admission(wanted_scope uuid, patient_alias text, request_id uuid default gen_random_uuid()) returns uuid
 language plpgsql security definer set search_path = '' as $$
-declare new_id uuid;
+declare new_id uuid; existing public.patient_admissions;
 begin
     if not samification_private.is_clinician(wanted_scope) then raise exception 'Scoped clinician required' using errcode='42501'; end if;
     if patient_alias is null or length(trim(patient_alias)) not between 1 and 100 then raise exception 'Patient alias required'; end if;
-    insert into public.patient_admissions(scope_id, patient_alias, created_by) values (wanted_scope, trim(patient_alias), auth.uid()) returning id into new_id;
+    if request_id is null then raise exception 'Request ID required'; end if;
+    insert into public.patient_admissions(id, scope_id, patient_alias, created_by) values (request_id, wanted_scope, trim(patient_alias), auth.uid())
+    on conflict (id) do nothing returning id into new_id;
+    if new_id is null then
+        select * into existing from public.patient_admissions where id=request_id;
+        if existing.scope_id=wanted_scope and existing.patient_alias=trim(patient_alias) and existing.created_by=auth.uid() then return existing.id; end if;
+        raise exception 'Request ID already used with different admission details';
+    end if;
     insert into public.clinical_audit_events(admission_id, actor_id, action) values (new_id, auth.uid(), 'admission_created');
     return new_id;
 end;
 $$;
-create function public.confirm_patient_regimen(wanted_admission uuid, medication_snapshot jsonb, source_csv text) returns uuid
+create function public.confirm_patient_regimen(wanted_admission uuid, medication_snapshot jsonb, source_csv text, request_id uuid default gen_random_uuid()) returns uuid
 language plpgsql security definer set search_path = '' as $$
-declare a public.patient_admissions; next_version integer; new_id uuid;
+declare a public.patient_admissions; next_version integer; new_id uuid; existing public.regimen_versions;
 begin
     if not samification_private.can_manage_admission(wanted_admission) then raise exception 'Scoped clinician required' using errcode='42501'; end if;
     select * into a from public.patient_admissions where id=wanted_admission for update;
     if a.status <> 'active' then raise exception 'Admission is closed'; end if;
     if not samification_private.valid_medication_snapshot(medication_snapshot) then raise exception 'Invalid confirmed medication snapshot'; end if;
     if source_csv is not null and octet_length(source_csv)>200000 then raise exception 'CSV exceeds 200 KB'; end if;
+    if request_id is null then raise exception 'Request ID required'; end if;
+    select * into existing from public.regimen_versions where id=request_id;
+    if found then
+        if existing.admission_id=wanted_admission and existing.medications=medication_snapshot and existing.original_csv is not distinct from source_csv and existing.confirmed_by=auth.uid() then return existing.id; end if;
+        raise exception 'Request ID already used with different regimen details';
+    end if;
     select coalesce(max(version),0)+1 into next_version from public.regimen_versions where admission_id=wanted_admission;
-    insert into public.regimen_versions(admission_id,version,medications,original_csv,confirmed_by)
-    values (wanted_admission,next_version,medication_snapshot,source_csv,auth.uid()) returning id into new_id;
+    insert into public.regimen_versions(id,admission_id,version,medications,original_csv,confirmed_by)
+    values (request_id,wanted_admission,next_version,medication_snapshot,source_csv,auth.uid()) returning id into new_id;
     update public.clinical_assignments set status='superseded' where admission_id=wanted_admission and status in ('assigned','in_progress');
     insert into public.clinical_audit_events(admission_id,actor_id,action,detail)
     values (wanted_admission,auth.uid(),'regimen_confirmed',jsonb_build_object('regimen_id',new_id,'version',next_version));
@@ -154,6 +167,6 @@ end;
 $$;
 revoke all on function samification_private.can_manage_admission(uuid), samification_private.valid_medication_snapshot(jsonb) from public, anon;
 grant execute on function samification_private.can_manage_admission(uuid) to authenticated;
-revoke all on function public.create_patient_admission(uuid,text), public.confirm_patient_regimen(uuid,jsonb,text), public.assign_patient_challenge(uuid,uuid,boolean,uuid), public.discharge_patient_admission(uuid) from public, anon;
-grant execute on function public.create_patient_admission(uuid,text), public.confirm_patient_regimen(uuid,jsonb,text), public.assign_patient_challenge(uuid,uuid,boolean,uuid), public.discharge_patient_admission(uuid) to authenticated;
+revoke all on function public.create_patient_admission(uuid,text,uuid), public.confirm_patient_regimen(uuid,jsonb,text,uuid), public.assign_patient_challenge(uuid,uuid,boolean,uuid), public.discharge_patient_admission(uuid) from public, anon;
+grant execute on function public.create_patient_admission(uuid,text,uuid), public.confirm_patient_regimen(uuid,jsonb,text,uuid), public.assign_patient_challenge(uuid,uuid,boolean,uuid), public.discharge_patient_admission(uuid) to authenticated;
 commit;
