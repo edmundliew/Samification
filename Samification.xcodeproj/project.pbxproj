@@ -45,6 +45,16 @@
 			"isa" = "PBXBuildFile";
 			"fileRef" = "3728E5E3697C40350CDF9A0A";
 		};
+		"CFA03B611D7BB32485967D59" = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "sourcecode.swift";
+			"path" = "App/StaffAccountView.swift";
+			"sourceTree" = "<group>";
+		};
+		"2FE27F07BCEBBCBCD3CCA5F4" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "CFA03B611D7BB32485967D59";
+		};
 		"E5D9EFEC5625163AD2B6A2B7" = {
 			"isa" = "PBXFileReference";
 			"lastKnownFileType" = "sourcecode.swift";
@@ -64,6 +74,16 @@
 		"3EA2FD4691678E55C44F0F5B" = {
 			"isa" = "PBXBuildFile";
 			"fileRef" = "66978F47070CA4514F7348D1";
+		};
+		"5053EE6A3A4A838065B37CDA" = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "sourcecode.swift";
+			"path" = "Sources/SamificationCore/StaffAccessClient.swift";
+			"sourceTree" = "<group>";
+		};
+		"604E7C94CB7B6EC4D98D39B1" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "5053EE6A3A4A838065B37CDA";
 		};
 		"3685E330EC5277A9DD5661C6" = {
 			"isa" = "PBXFileReference";
@@ -89,13 +109,13 @@
 		};
 		"B28B7AF69320201D1CF206EB" = {
 			"isa" = "PBXGroup";
-			"children" = ("ED8C416C536C637C3FB56EEE", "8316C2143125B23A5905A76D", "7C31CB2A287C561131AD281B", "3728E5E3697C40350CDF9A0A", "E5D9EFEC5625163AD2B6A2B7", "66978F47070CA4514F7348D1", "3685E330EC5277A9DD5661C6", "FBDC4F23F93125BBEEAE800C",);
+			"children" = ("ED8C416C536C637C3FB56EEE", "8316C2143125B23A5905A76D", "7C31CB2A287C561131AD281B", "3728E5E3697C40350CDF9A0A", "CFA03B611D7BB32485967D59", "E5D9EFEC5625163AD2B6A2B7", "66978F47070CA4514F7348D1", "5053EE6A3A4A838065B37CDA", "3685E330EC5277A9DD5661C6", "FBDC4F23F93125BBEEAE800C", "E01A37539DD44DE20F00A582",);
 			"sourceTree" = "<group>";
 		};
 		"BCE16DD0260827ECF338C787" = {
 			"isa" = "PBXSourcesBuildPhase";
 			"buildActionMask" = 2147483647;
-			"files" = ("808FCD0BE59C5CA780F3280F", "35F86696EBDD6C2858ACAB60", "576A90FA58AEC746688048F4", "F84AE67A1486158E645514FB", "58C5F4DC924C49C2655EED05", "3EA2FD4691678E55C44F0F5B",);
+			"files" = ("808FCD0BE59C5CA780F3280F", "35F86696EBDD6C2858ACAB60", "576A90FA58AEC746688048F4", "F84AE67A1486158E645514FB", "2FE27F07BCEBBCBCD3CCA5F4", "58C5F4DC924C49C2655EED05", "3EA2FD4691678E55C44F0F5B", "604E7C94CB7B6EC4D98D39B1",);
 			"runOnlyForDeploymentPostprocessing" = 0;
 		};
 		"0189424A5A60FED329FA868E" = {
@@ -109,6 +129,12 @@
 			"buildActionMask" = 2147483647;
 			"files" = ();
 			"runOnlyForDeploymentPostprocessing" = 0;
+		};
+		"E01A37539DD44DE20F00A582" = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "text.xcconfig";
+			"path" = "Config/Base.xcconfig";
+			"sourceTree" = "<group>";
 		};
 		"ED8772ADEC3A6C25161BC957" = {
 			"isa" = "XCBuildConfiguration";
@@ -126,7 +152,10 @@
 		"4D8F54E7CBAF670D9F6C230D" = {
 			"isa" = "XCBuildConfiguration";
 			"name" = "Debug";
+			"baseConfigurationReference" = "E01A37539DD44DE20F00A582";
 			"buildSettings" = {
+				"INFOPLIST_KEY_SUPABASE_URL" = "$(SUPABASE_URL)";
+				"INFOPLIST_KEY_SUPABASE_PUBLISHABLE_KEY" = "$(SUPABASE_PUBLISHABLE_KEY)";
 				"PRODUCT_BUNDLE_IDENTIFIER" = "com.edmundliew.samification";
 				"PRODUCT_NAME" = "$(TARGET_NAME)";
 				"GENERATE_INFOPLIST_FILE" = "YES";
@@ -137,8 +166,8 @@
 				"SUPPORTS_MACCATALYST" = "NO";
 				"INFOPLIST_KEY_UISupportedInterfaceOrientations" = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				"INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad" = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				"MARKETING_VERSION" = "0.1.0";
-				"CURRENT_PROJECT_VERSION" = "1";
+				"MARKETING_VERSION" = "0.2.0";
+				"CURRENT_PROJECT_VERSION" = "2";
 				"CODE_SIGN_STYLE" = "Automatic";
 				"LD_RUNPATH_SEARCH_PATHS" = "$(inherited) @executable_path/Frameworks";
 				"ENABLE_PREVIEWS" = "YES";
@@ -160,7 +189,10 @@
 		"1A6EFC2CD0AF63DD14BE0438" = {
 			"isa" = "XCBuildConfiguration";
 			"name" = "Release";
+			"baseConfigurationReference" = "E01A37539DD44DE20F00A582";
 			"buildSettings" = {
+				"INFOPLIST_KEY_SUPABASE_URL" = "$(SUPABASE_URL)";
+				"INFOPLIST_KEY_SUPABASE_PUBLISHABLE_KEY" = "$(SUPABASE_PUBLISHABLE_KEY)";
 				"PRODUCT_BUNDLE_IDENTIFIER" = "com.edmundliew.samification";
 				"PRODUCT_NAME" = "$(TARGET_NAME)";
 				"GENERATE_INFOPLIST_FILE" = "YES";
@@ -171,8 +203,8 @@
 				"SUPPORTS_MACCATALYST" = "NO";
 				"INFOPLIST_KEY_UISupportedInterfaceOrientations" = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				"INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad" = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				"MARKETING_VERSION" = "0.1.0";
-				"CURRENT_PROJECT_VERSION" = "1";
+				"MARKETING_VERSION" = "0.2.0";
+				"CURRENT_PROJECT_VERSION" = "2";
 				"CODE_SIGN_STYLE" = "Automatic";
 				"LD_RUNPATH_SEARCH_PATHS" = "$(inherited) @executable_path/Frameworks";
 				"ENABLE_PREVIEWS" = "YES";

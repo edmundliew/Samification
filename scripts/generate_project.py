@@ -30,6 +30,8 @@ source_phase = obj('sources', {'isa': 'PBXSourcesBuildPhase', 'buildActionMask':
 resource_phase = obj('resources', {'isa': 'PBXResourcesBuildPhase', 'buildActionMask': 2147483647, 'files': [asset_build], 'runOnlyForDeploymentPostprocessing': 0})
 framework_phase = obj('frameworks', {'isa': 'PBXFrameworksBuildPhase', 'buildActionMask': 2147483647, 'files': [], 'runOnlyForDeploymentPostprocessing': 0})
 
+config_ref = obj('base-config', {'isa': 'PBXFileReference', 'lastKnownFileType': 'text.xcconfig', 'path': 'Config/Base.xcconfig', 'sourceTree': '<group>'})
+objects[main]['children'].append(config_ref)
 project_configs, target_configs = [], []
 for config in ['Debug', 'Release']:
     project_configs.append(obj('project-' + config, {'isa': 'XCBuildConfiguration', 'name': config, 'buildSettings': {
@@ -38,14 +40,15 @@ for config in ['Debug', 'Release']:
         'DEBUG_INFORMATION_FORMAT': 'dwarf' if config == 'Debug' else 'dwarf-with-dsym',
         'SWIFT_ACTIVE_COMPILATION_CONDITIONS': 'DEBUG' if config == 'Debug' else '',
     }}))
-    target_configs.append(obj('target-' + config, {'isa': 'XCBuildConfiguration', 'name': config, 'buildSettings': {
+    target_configs.append(obj('target-' + config, {'isa': 'XCBuildConfiguration', 'name': config, 'baseConfigurationReference': config_ref, 'buildSettings': {
+        'INFOPLIST_KEY_SUPABASE_URL': '$(SUPABASE_URL)', 'INFOPLIST_KEY_SUPABASE_PUBLISHABLE_KEY': '$(SUPABASE_PUBLISHABLE_KEY)',
         'PRODUCT_BUNDLE_IDENTIFIER': 'com.edmundliew.samification', 'PRODUCT_NAME': '$(TARGET_NAME)',
         'GENERATE_INFOPLIST_FILE': 'YES', 'INFOPLIST_KEY_CFBundleDisplayName': 'Samification',
         'INFOPLIST_KEY_UILaunchScreen_Generation': 'YES', 'TARGETED_DEVICE_FAMILY': '1,2',
         'SUPPORTED_PLATFORMS': 'iphoneos iphonesimulator', 'SUPPORTS_MACCATALYST': 'NO',
         'INFOPLIST_KEY_UISupportedInterfaceOrientations': 'UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight',
         'INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad': 'UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight',
-        'MARKETING_VERSION': '0.1.0', 'CURRENT_PROJECT_VERSION': '1', 'CODE_SIGN_STYLE': 'Automatic',
+        'MARKETING_VERSION': '0.2.0', 'CURRENT_PROJECT_VERSION': '2', 'CODE_SIGN_STYLE': 'Automatic',
         'LD_RUNPATH_SEARCH_PATHS': '$(inherited) @executable_path/Frameworks',
         'ENABLE_PREVIEWS': 'YES',
     }}))

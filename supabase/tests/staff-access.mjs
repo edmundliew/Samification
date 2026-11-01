@@ -1,0 +1,81 @@
+// Usage: node staff-access.mjs /absolute/path/to/pglite/dist/index.js
+// PGlite is an isolated PostgreSQL runtime. No remote project or patient data is touched.
+import { readFile } from 'node:fs/promises';
+import { pathToFileURL } from 'node:url';
+import assert from 'node:assert/strict';
+const { PGlite } = await import(pathToFileURL(process.argv[2]).href);
+const db = new PGlite();
+const admin = '00000000-0000-4000-8000-000000000001';
+const nurse = '00000000-0000-4000-8000-000000000002';
+const other = '00000000-0000-4000-8000-000000000003';
+const scope = '00000000-0000-4000-8000-000000000010';
+const otherScope = '00000000-0000-4000-8000-000000000011';
+await db.exec(`
+create role anon; create role authenticated;
+create schema auth; create table auth.users(id uuid primary key);
+create function auth.jwt() returns jsonb language sql stable as $$ select coalesce(nullif(current_setting('request.jwt.claims', true), ''), '{}')::jsonb $$;
+create function auth.uid() returns uuid language sql stable as $$ select (auth.jwt()->>'sub')::uuid $$;
+grant usage on schema auth to authenticated, anon;
+insert into auth.users values ('${admin}'), ('${nurse}'), ('${other}');
+`);
+await db.exec(await readFile(new URL('../migrations/202611010001_staff_access.sql', import.meta.url), 'utf8'));
+await db.query('insert into public.care_scopes(id, name) values ($1,$2),($3,$4)',[scope,'Fictional Ward A',otherScope,'Fictional Ward B']);
+await db.query("insert into public.staff_memberships(user_id,role) values ($1,'administrator')",[admin]);
+async function as(user, anonymous=false) {
+    await db.exec('reset role');
+    await db.query("select set_config('request.jwt.claims', $1, false)",[JSON.stringify({sub:user,is_anonymous:anonymous})]);
+    await db.exec('set role authenticated');
+}
+let passed=0;
+async function deny(sql,args=[]) { await assert.rejects(db.query(sql,args)); passed++; }
+async function value(sql,args=[]) { return (await db.query(sql,args)).rows[0]; }
+await as(nurse);
+await deny("insert into public.staff_memberships(user_id,role) values ($1,'administrator')",[nurse]);
+await deny('insert into public.access_audit_events(actor_id,subject_id,action) values ($1,$1,$2)',[nurse,'forged']);
+assert.equal((await value('select count(*)::int n from public.staff_memberships')).n,0); passed++;
+const request=(await value('select public.request_clinician_access($1,$2) id',[scope,'Demo nurse'])).id;
+await deny('select public.request_clinician_access($1,$2)',[scope,'Duplicate']);
+await deny('select public.decide_clinician_access($1,true,$2)',[request,'Self approval']);
+await deny("update public.staff_access_requests set status = 'approved'");
+await as(other);
+assert.equal((await value('select count(*)::int n from public.staff_access_requests')).n,0); passed++;
+await as(admin);
+assert.equal((await value('select samification_private.is_clinician($1) allowed',[scope])).allowed,false); passed++;
+await deny('select public.decide_clinician_access($1,true,$2)',[request,'']);
+await db.query('select public.decide_clinician_access($1,true,$2)',[request,'Verified for fictional pilot']);
+await deny('select public.decide_clinician_access($1,true,$2)',[request,'Duplicate decision']);
+await as(nurse);
+assert.equal((await value('select samification_private.is_clinician($1) allowed',[scope])).allowed,true); passed++;
+assert.equal((await value('select samification_private.is_clinician($1) allowed',[otherScope])).allowed,false); passed++;
+const membership = (await value('select id from public.staff_memberships')).id;
+await deny('select public.set_clinician_access($1,false,$2)',[membership,'Unauthorised change']);
+await as(nurse,true);
+assert.equal((await value('select count(*)::int n from public.staff_memberships')).n,0); passed++;
+assert.equal((await value('select samification_private.is_clinician($1) allowed',[scope])).allowed,false); passed++;
+await deny('select public.request_clinician_access($1,$2)',[otherScope,'Anonymous']);
+await as(admin,true);
+await deny('select public.set_clinician_access($1,false,$2)',[membership,'Anonymous admin']);
+await as(admin);
+await db.query('select public.set_clinician_access($1,false,$2)',[membership,'Access revoked']);
+await as(nurse);
+assert.equal((await value('select samification_private.is_clinician($1) allowed',[scope])).allowed,false); passed++;
+await deny('select public.request_clinician_access($1,$2)',[scope,'Try to bypass suspension']);
+await as(admin);
+const adminMembership=(await value("select id from public.staff_memberships where role='administrator'")).id;
+await deny('select public.set_clinician_access($1,false,$2)',[adminMembership,'Cannot alter admin via clinician RPC']);
+await db.query('select public.set_clinician_access($1,true,$2)',[membership,'Re-verified']);
+await deny('delete from public.access_audit_events');
+await as(nurse);
+assert.equal((await value('select samification_private.is_clinician($1) allowed',[scope])).allowed,true); passed++;
+assert.equal((await value('select count(*)::int n from public.access_audit_events')).n,4); passed++;
+await as(other);
+const rejected=(await value('select public.request_clinician_access($1,$2) id',[otherScope,'Another demo nurse'])).id;
+await as(admin);
+await db.query('select public.decide_clinician_access($1,false,$2)',[rejected,'Further review needed']);
+await as(other);
+assert.equal((await value('select public.request_clinician_access($1,$2) id',[otherScope,'Another demo nurse'])).id,rejected); passed++;
+await db.exec('reset role; set role anon');
+await deny('select * from public.staff_memberships');
+await deny('select public.request_clinician_access($1,$2)',[scope,'Unauthenticated']);
+await db.close();
+console.log(`${passed} PostgreSQL access-control checks passed. Migration applied only to isolated test database.`);

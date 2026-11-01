@@ -65,7 +65,7 @@ struct RootView: View {
         @Bindable var store = store
         VStack(spacing: 0) {
             VStack(alignment: .leading, spacing: 8) {
-                HStack { Label("Samification", systemImage: "pills.fill").font(.headline); Spacer(); Text("v0.1.0").font(.caption).foregroundStyle(.secondary) }
+                HStack { Label("Samification", systemImage: "pills.fill").font(.headline); Spacer(); Text("v0.2 · Development").font(.caption).foregroundStyle(.secondary) }
                 Picker("Demo role preview", selection: $store.role) { ForEach(DemoRole.allCases) { Text($0.rawValue).tag($0) } }
                     .pickerStyle(.segmented).onChange(of: store.role) { _, role in store.selectedTab = role == .clinician ? "assign" : role == .patient ? "patient" : "admin" }
                 Text("OFFLINE DEMO · Fictional patient P-001 · Role previews are simulated · Closing the app clears session data")
@@ -81,6 +81,7 @@ struct RootView: View {
                 } else {
                     NavigationStack { AdministratorView() }.tabItem { Label("Users", systemImage: "person.badge.key") }.tag("admin")
                 }
+                NavigationStack { StaffAccountView() }.tabItem { Label("Account", systemImage: "person.crop.circle") }.tag("account")
                 NavigationStack { HelpView() }.tabItem { Label("Help", systemImage: "questionmark.circle") }.tag("help")
             }
         }.alert("Samification", isPresented: Binding(get: { store.message != nil }, set: { if !$0 { store.message = nil } })) { Button("OK") { store.message = nil } } message: { Text(store.message ?? "") }

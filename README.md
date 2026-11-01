@@ -47,3 +47,7 @@ xcodebuild -project Samification.xcodeproj -scheme Samification \
 - `Config/`: local configuration example. Real secrets and signing files are ignored.
 
 Package photos were supplied by the project owner for the demo. They are not verified product-identification images or licensed catalogue assets. They only appear with the demo product's original strength. Imported products use labelled pill icons until a verified catalogue is implemented.
+
+## Staff access development checkpoint
+
+The Account tab and Supabase staff-access migration are in development for v0.2. The stable v0.1.0 tag remains the offline preview. This checkpoint has 12 passing Swift tests and 26 isolated PostgreSQL checks; remote migration, Auth configuration and updated native UI verification remain pending. See [staff access setup and validation](docs/STAFF_ACCESS.md).
