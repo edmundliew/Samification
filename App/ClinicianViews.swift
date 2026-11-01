@@ -7,10 +7,12 @@ struct MedicationReviewView: View {
     var body: some View {
         @Bindable var store = store
         List {
+            Section { PatientSelector() }
             Section {
                 Text("Four demo medicines are preconfirmed on launch. Review any edits before assigning a new regimen version.")
                 Button("Import fictional CSV", systemImage: "square.and.arrow.down") { importing = true }
-                Button("Reload four demo medicines") { store.medications = DemoData.medications.map { var m = $0; m.confirmed = false; return m } }
+                NavigationLink("Medication product catalogue") { CatalogueView() }
+                Button("Reload four demo medicines") { store.reloadDemoMedicines() }
             }
             ForEach(store.medications.indices, id: \.self) { index in
                 Section {
@@ -30,7 +32,7 @@ struct MedicationReviewView: View {
                     let values = try url.resourceValues(forKeys: [.fileSizeKey])
                     guard (values.fileSize ?? 0) <= 200_000 else { throw CSVError.invalid("Use a CSV smaller than 200 KB.") }
                     let text = try String(contentsOf: url, encoding: .utf8)
-                    store.medications = try CSVImporter.medications(from: text)
+                    try store.importCSV(text)
                     store.message = "CSV imported. Review and confirm every included row."
                 } catch { store.message = error.localizedDescription }
             }
@@ -71,11 +73,12 @@ struct AssignmentView: View {
     @State private var practice = false
     var body: some View {
         List {
-            Section("P-001 · Fictional demo admission") {
+            Section { PatientSelector() }
+            Section("\(store.patient.label) · Fictional demo admission") {
                 Text("Confirmed regimen v\(store.version) · \(store.confirmedMedications.count) medicines")
                 Toggle("Practice mode", isOn: $practice)
                 Text(practice ? "Practice is labelled separately in results." : "Assessment retains the first answer before feedback, then permits guided retries.").font(.subheadline).foregroundStyle(.secondary)
-                Button("Assign to P-001", systemImage: "paperplane.fill") { store.assign(practice: practice) }.buttonStyle(.borderedProminent)
+                Button("Assign to \(store.patient.label)", systemImage: "paperplane.fill") { store.assign(practice: practice) }.buttonStyle(.borderedProminent)
                 Button("Open patient preview") { store.patientPreview() }
             }
             Section("Assignments") {
@@ -85,11 +88,15 @@ struct AssignmentView: View {
                         Text("Regimen v\(c.regimenVersion) · \(c.practice ? "Practice" : "Assessment")").font(.headline)
                         Text(c.shared ? "Results received" : c.superseded ? "Superseded" : "Available to patient").foregroundStyle(c.superseded ? .orange : .secondary)
                         Text(c.id.uuidString).font(.caption2).textSelection(.enabled)
+                        if c.shared { NavigationLink("Review competency evidence") { ResultDetailView(challenge: c) } }
                         Button("Open patient view") { store.activeID = c.id; store.patientPreview() }
                     }.padding(.vertical, 4)
                 }
             }
-            Section { Text("Delivery and notifications are simulated in this release. Sessions stay on this device.").font(.caption) }
+            Section {
+                NavigationLink("Regimen version history") { RegimenHistoryView() }
+                Text("Assignments and results are saved for this fictional patient on this device. Cross-device delivery is not connected yet.").font(.caption)
+            }
         }.navigationTitle("Patient assignment")
     }
 }
@@ -98,7 +105,7 @@ struct PatientInboxView: View {
     @Environment(DemoStore.self) private var store
     var body: some View {
         List {
-            Section { Text("P-001 · Your medication challenges") }
+            Section { Text("\(store.patient.label) · Your medication challenges") }
             if store.challenges.isEmpty {
                 Text("No challenge assigned yet.")
                 Button("Open clinician assignments") { store.role = .clinician; store.selectedTab = "assign" }

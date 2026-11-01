@@ -45,7 +45,7 @@ public struct StaffAccessClient: Sendable {
               publishableKey.hasPrefix("sb_publishable_"), !publishableKey.contains("REPLACE") else { throw StaffAPIError.configuration }
         self.baseURL = parsed; self.publishableKey = publishableKey; self.transport = transport
     }
-    private func request(_ path: String, method: String = "GET", body: [String: Any]? = nil, token: String? = nil) async throws -> Data {
+    func request(_ path: String, method: String = "GET", body: [String: Any]? = nil, token: String? = nil) async throws -> Data {
         guard let url = URL(string: path, relativeTo: baseURL) else { throw StaffAPIError.configuration }
         var request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 20)
         request.httpMethod = method
@@ -81,7 +81,7 @@ public struct StaffAccessClient: Sendable {
     public func requests(token: String) async throws -> [StaffAccessRequest] {
         try await decode([StaffAccessRequest].self, path: "/rest/v1/staff_access_requests?select=id,user_id,scope_id,display_name,status&order=requested_at.desc", token: token)
     }
-    private func decode<T: Decodable>(_ type: T.Type, path: String, token: String) async throws -> T {
+    func decode<T: Decodable>(_ type: T.Type, path: String, token: String) async throws -> T {
         try await JSONDecoder().decode(type, from: request(path, token: token))
     }
     public func requestAccess(scope: UUID, name: String, token: String) async throws {

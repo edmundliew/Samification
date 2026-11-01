@@ -4,13 +4,14 @@ struct ResultsView: View {
     @Environment(DemoStore.self) private var store
     var body: some View {
         List {
+            Section { PatientSelector() }
             Section { Text("Three directly measurable results. First attempts and guided retries remain separate; no combined qualification score is calculated.") }
             let shared = store.challenges.filter(\.shared)
             if shared.isEmpty { Text("No results shared yet. Assign and complete a challenge in the patient preview.").foregroundStyle(.secondary) }
             ForEach(shared.reversed()) { c in
                 NavigationLink { ResultDetailView(challenge: c) } label: {
                     VStack(alignment: .leading) {
-                        Text("P-001 · Regimen v\(c.regimenVersion)").font(.headline)
+                        Text("\(store.patient.label) · Regimen v\(c.regimenVersion)").font(.headline)
                         Text("\(c.practice ? "Practice" : "Assessment") · \(c.attempts.count) submissions · \(c.hintCount) hints")
                         Text(c.attempts.first?.score.correct == true ? "First attempt correct" : "First attempt had errors").font(.caption).foregroundStyle(.secondary)
                     }
@@ -31,7 +32,7 @@ struct ResultDetailView: View {
         List {
             if challenge.regimenVersion != store.version { Section { Text("Historical regimen v\(challenge.regimenVersion). Current regimen is v\(store.version).").foregroundStyle(.orange) } }
             Section {
-                Text("P-001 · \(challenge.practice ? "Practice" : "Assessment") · \(Score.rulesVersion)")
+                Text("\(store.patient.label) · \(challenge.practice ? "Practice" : "Assessment") · \(Score.rulesVersion)")
                 Text(challenge.priorExposure ? "Prior exposure to this regimen recorded" : "No earlier exposure recorded in this demo").font(.caption)
                 Picker("Submission to inspect", selection: $selectedAttempt) {
                     ForEach(challenge.attempts.indices, id: \.self) { Text("Attempt \($0 + 1)\($0 == 0 ? " · first" : "")").tag($0) }
@@ -93,8 +94,7 @@ struct ResultDetailView: View {
                 Picker("Disposition", selection: $disposition) { ForEach(dispositions, id: \.self) { Text($0) } }
                 TextField("Rationale, medicines and assistance scope", text: $rationale, axis: .vertical).lineLimit(3...6)
                 Button("Record demo review") {
-                    store.reviews.append(ReviewRecord(sessionID: challenge.id, disposition: disposition, rationale: rationale.trimmingCharacters(in: .whitespacesAndNewlines)))
-                    store.message = "Demo review recorded separately from assessment evidence."
+                    store.recordReview(challenge.id, disposition: disposition, rationale: rationale)
                 }.disabled(rationale.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 ForEach(store.reviews.filter { $0.sessionID == challenge.id }) { r in
                     VStack(alignment: .leading) { Text(r.disposition).font(.headline); Text(r.rationale); Text(r.at.formatted()).font(.caption) }
@@ -135,11 +135,13 @@ struct AuditView: View {
 }
 
 struct HelpView: View {
+    @Environment(DemoStore.self) private var store
+    @State private var confirmingRestart = false
     var body: some View {
         List {
             Section("Clinician → Patient → Clinician") {
                 HelpStep(number: 1, title: "Prepare", text: "Upload a CSV, review medication names, doses, strengths and day periods, then confirm the regimen. The four fictional demo medicines are preconfirmed on launch.", symbol: "list.clipboard")
-                HelpStep(number: 2, title: "Assign", text: "In the clinician preview, open Assign. Choose assessment or practice and press Assign to P-001. Then open the patient preview.", symbol: "paperplane")
+                HelpStep(number: 2, title: "Assign", text: "In the clinician preview, open Assign. Select a fictional patient, choose assessment or practice and press Assign. Then open the patient preview.", symbol: "paperplane")
                 HelpStep(number: 3, title: "Play and share", text: "Open Challenges and start a challenge. Fill the tray, check it, retry as needed and share results.", symbol: "pills")
                 HelpStep(number: 4, title: "Review evidence", text: "In the clinician preview, open Results. Inspect the first attempt, later submissions, assistance used and audit trail. Record a separate clinical review.", symbol: "chart.bar")
             }
@@ -161,11 +163,19 @@ struct HelpView: View {
                 Text("Assistance & retries records first-attempt correctness, total submissions, first correct attempt, retries to correct and hint views. Automatic feedback exposure is separately recorded.")
                 Text("There is no overall qualification score. These rules need clinical validation, and clinicians make self-administration decisions under local policy.")
             }
-            Section("Offline demo v0.1") {
-                Text("Role switching, administrator approvals, patient identity and delivery are simulated on one device. No Supabase sign-in, push notifications or cross-device sharing are connected yet. Closing the app clears this session.")
+            Section("Saved local demo") {
+                Text("Select a fictional patient in the clinician views. Each patient has a separate CSV draft, confirmed regimen history, assignments, attempts and reviews. These records are saved on this device and restored after reopening the app. Role previews and delivery remain simulated; no cross-device clinical sharing is connected yet. Staff Account is a separate Supabase development screen; email setup is deferred.")
                 Text("The supplied package photos are demo references. Tablet icons are illustrative. Food compliance, technique and actual medication adherence are not measured.")
             }
+            Section("Demo workspace") {
+                Button("Save on this device") { store.persist() }
+                Button("Archive demo & start again", role: .destructive) { confirmingRestart = true }
+                Text("Only fictional data belongs in this build. Restarting preserves the previous saved workspace as a local backup.").font(.caption)
+            }
         }.navigationTitle("Help & walkthrough")
+            .confirmationDialog("Archive this fictional workspace and start again?", isPresented: $confirmingRestart, titleVisibility: .visible) {
+                Button("Archive & start again", role: .destructive) { store.archiveAndRestart() }
+            }
     }
 }
 

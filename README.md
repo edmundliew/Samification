@@ -2,11 +2,13 @@
 
 Medication tray assessment prototype for iPhone and iPad. Bundle identifier: `com.edmundliew.samification`.
 
-## v0.1.0 — offline SwiftUI foundation
+## Current development build
 
-Includes clinician medication review/CSV import, versioned assignments, patient tap/drag tray game, package photos, red/green feedback, hints, immutable submissions, clinician results, review records, audit events, Help, and a simulated administrator approval preview. Four fictional medications are preconfirmed on launch.
+The clinician workflow now supports multiple fictional patients with separate CSV drafts, immutable confirmed regimen versions, assignments, tray evidence and reviews. The workspace is saved locally and restored after app restart. The four demo medications are preconfirmed for each new fictional patient. Product references and photos can be browsed separately from patient prescriptions.
 
-This is a source preview, not a clinically validated or signed distribution. Authentication, Supabase access policies, cross-device delivery, notifications and durable audit storage are planned in v0.2–v0.5. Role switching is explicitly a local demo control. No Supabase network requests or credentials are used in v0.1. Closing the app clears session data.
+The Account screen and staff-access Supabase migration are present. The staff migration is deployed; email setup and initial administrator provisioning are deferred. The next migration and API client for admissions, regimen versions, assignments and discharge are prepared and tested locally, but **not deployed or wired into the clinical UI yet**. Patient pairing, cross-device clinical sharing and server-side scoring remain pending. Role switching still controls only fictional local previews.
+
+This is a development source checkpoint, not a clinically validated or signed distribution. Use fictional data only. The stable `v0.1.0` tag retains the original session-only preview. See [current workflow validation](docs/CORE_WORKFLOW.md) and [release history](docs/RELEASES.md).
 
 ## Open and run
 
@@ -48,6 +50,6 @@ xcodebuild -project Samification.xcodeproj -scheme Samification \
 
 Package photos were supplied by the project owner for the demo. They are not verified product-identification images or licensed catalogue assets. They only appear with the demo product's original strength. Imported products use labelled pill icons until a verified catalogue is implemented.
 
-## Staff access development checkpoint
+## Backend checkpoints
 
-The Account tab and Supabase staff-access migration are in development for v0.2. The stable v0.1.0 tag remains the offline preview. This checkpoint has 12 passing Swift tests and 26 isolated PostgreSQL checks; the updated Account screen builds and renders on the iPhone simulator. The staff-access migration is applied and its five live checks pass. Email delivery configuration, administrator bootstrap and end-to-end sign-in remain pending. See [staff access setup and validation](docs/STAFF_ACCESS.md).
+Twenty-three Swift tests and 69 isolated PostgreSQL checks pass (26 staff access + 43 clinical workflow). The staff migration's five live schema/grant checks also passed. See [staff access](docs/STAFF_ACCESS.md), [deployment record](docs/BACKEND_DEPLOYMENT.md) and [current workflow](docs/CORE_WORKFLOW.md). Email sender configuration is a backend setting, independent of role approval and the recipient’s email domain; see [email configuration boundary](docs/EMAIL_CONFIGURATION.md).

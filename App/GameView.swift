@@ -70,11 +70,7 @@ struct GameView: View {
                 }.padding().frame(maxWidth: 950).frame(maxWidth: .infinity)
             }
         }.navigationTitle("Plan your medication day").navigationBarTitleDisplayMode(.inline)
-            .onAppear {
-                guard let c = challenge else { return }
-                let prior = store.challenges.contains { $0.id != c.id && $0.regimenVersion == c.regimenVersion && !$0.attempts.isEmpty }
-                store.update(c.id) { $0.start(priorExposure: prior) }
-            }
+            .onAppear { store.start(challengeID) }
     }
     private func edited() { showingFeedback = false; showingHint = false }
     private func name(_ id: UUID, in c: Challenge) -> String { c.medications.first { $0.id == id }?.code ?? "Unknown medication" }

@@ -13,48 +13,84 @@ enum DemoRole: String, CaseIterable, Identifiable {
     var id: String { rawValue }
 }
 
-struct ReviewRecord: Identifiable {
-    let id = UUID()
-    let sessionID: UUID
-    let disposition: String
-    let rationale: String
-    let at = Date()
-}
-
 @MainActor @Observable final class DemoStore {
+    @ObservationIgnored private let repository: WorkspaceRepository
+    @ObservationIgnored private var persistenceEnabled = true
+    var workspace: DemoWorkspace { didSet { persist() } }
+    var persistenceError: String?
     var role: DemoRole = .clinician
-    var medications = DemoData.medications
-    var confirmedMedications = DemoData.medications
-    var version = 1
-    var challenges: [Challenge] = []
     var activeID: UUID?
-    var reviews: [ReviewRecord] = []
     var message: String?
     var accessRequests = ["Demo nurse · Ward A"]
     var approvedStaff: [String] = []
     var selectedTab = "assign"
-    var validation: [String] {
-        let included = medications.filter(\.included)
-        var errors = medications.flatMap(\.issues)
-        if included.isEmpty { errors.append("Include at least one supported medicine.") }
-        let names = included.map { $0.name.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() }
-        if Set(names).count != names.count { errors.append("Resolve duplicate included medication names.") }
-        return errors
+    var patient: PatientCase { workspace.patients[workspace.selectedIndex] }
+    var medications: [Medication] {
+        get { patient.draft }
+        set { modify { $0.draft = newValue } }
+    }
+    var confirmedMedications: [Medication] { patient.latestRegimen.medications }
+    var version: Int { patient.latestRegimen.number }
+    var challenges: [Challenge] { patient.challenges }
+    var reviews: [ReviewRecord] { patient.reviews }
+    var validation: [String] { patient.validation }
+    init(repository: WorkspaceRepository = WorkspaceRepository(url: WorkspaceRepository.defaultURL)) {
+        self.repository = repository
+        do { workspace = try repository.load() ?? DemoWorkspace() }
+        catch {
+            workspace = DemoWorkspace(); persistenceEnabled = false
+            persistenceError = "Saved demo could not be loaded. Its file is preserved; this temporary workspace will not overwrite it."
+        }
+    }
+    private func modify(_ mutation: (inout PatientCase) throws -> Void) rethrows {
+        let index = workspace.selectedIndex
+        var value = workspace.patients[index]
+        try mutation(&value); workspace.patients[index] = value
+    }
+    func persist() {
+        guard persistenceEnabled else { return }
+        do { try repository.save(workspace); persistenceError = nil }
+        catch { persistenceError = "Changes could not be saved on this device. Keep the app open and try Save again." }
+    }
+    func selectPatient(_ id: UUID) {
+        guard workspace.patients.contains(where: { $0.id == id }) else { return }
+        workspace.selectedPatientID = id; activeID = nil
+    }
+    func addPatient() { workspace.addPatient(); activeID = nil }
+    func importCSV(_ text: String) throws { try modify { try $0.importCSV(text) } }
+    func reloadDemoMedicines() {
+        modify { $0.draft = DemoData.medications.map { var m = $0; m.confirmed = false; return m }; $0.draftSourceCSV = nil }
     }
     func confirm() {
-        guard validation.isEmpty else { return }
-        version += 1; confirmedMedications = medications.filter(\.included)
-        for index in challenges.indices where !challenges[index].shared { challenges[index].supersede() }
-        selectedTab = "assign"; message = "Regimen v\(version) confirmed."
+        do {
+            try modify { try $0.confirm() }
+            selectedTab = "assign"; message = "\(patient.label) regimen v\(version) confirmed."
+        } catch { message = error.localizedDescription }
     }
     func assign(practice: Bool) {
-        let prior = challenges.contains { $0.regimenVersion == version && !$0.attempts.isEmpty }
-        let c = Challenge(medications: confirmedMedications, regimenVersion: version, practice: practice, priorExposure: prior)
-        challenges.append(c); activeID = c.id; message = "Challenge assigned to demo patient P-001."
+        modify { activeID = $0.assign(practice: practice) }
+        message = "Challenge assigned to fictional patient \(patient.label)."
     }
     func update(_ id: UUID, _ mutation: (inout Challenge) -> Void) {
-        guard let index = challenges.firstIndex(where: { $0.id == id }) else { return }
-        mutation(&challenges[index])
+        modify { patient in
+            guard let index = patient.challenges.firstIndex(where: { $0.id == id }) else { return }
+            mutation(&patient.challenges[index])
+        }
+    }
+    func start(_ id: UUID) { modify { $0.start(id) } }
+    func recordReview(_ id: UUID, disposition: String, rationale: String) {
+        do {
+            try modify { try $0.recordReview(challengeID: id, disposition: disposition, rationale: rationale) }
+            message = "Demo review saved separately from assessment evidence."
+        } catch { message = error.localizedDescription }
+    }
+    func archiveAndRestart() {
+        do {
+            try repository.archive()
+            let fresh = DemoWorkspace(); try repository.save(fresh)
+            persistenceEnabled = true; workspace = fresh; activeID = nil
+            message = "Previous demo archived on this device. A fresh fictional workspace is ready."
+        } catch { message = "Could not archive the old workspace. Existing records have been preserved." }
     }
     func patientPreview() { role = .patient; selectedTab = "patient" }
 }
@@ -68,9 +104,12 @@ struct RootView: View {
                 HStack { Label("Samification", systemImage: "pills.fill").font(.headline); Spacer(); Text("v0.2 · Development").font(.caption).foregroundStyle(.secondary) }
                 Picker("Demo role preview", selection: $store.role) { ForEach(DemoRole.allCases) { Text($0.rawValue).tag($0) } }
                     .pickerStyle(.segmented).onChange(of: store.role) { _, role in store.selectedTab = role == .clinician ? "assign" : role == .patient ? "patient" : "admin" }
-                Text("OFFLINE DEMO · Fictional patient P-001 · Role previews are simulated · Closing the app clears session data")
+                Text("LOCAL DEMO · Fictional records · Role previews are simulated · Work is saved on this device")
                     .font(.caption).foregroundStyle(.secondary)
             }.padding().background(.bar)
+            if let error = store.persistenceError {
+                VStack { Notice(text: error, color: .red); Button("Save again") { store.persist() } }.padding(.horizontal)
+            }
             TabView(selection: $store.selectedTab) {
                 if store.role == .clinician {
                     NavigationStack { MedicationReviewView() }.tabItem { Label("Medications", systemImage: "list.clipboard") }.tag("meds")
@@ -115,7 +154,8 @@ struct AdministratorView: View {
                 }
             }
             Section("Medication catalogue") {
-                Text("Four demo products and their supplied package photos are bundled with this release. Verification and catalogue administration are planned for the connected pilot.")
+                NavigationLink("Browse demo products & package photos") { CatalogueView() }
+                Text("Product strengths and photos are separate from each patient’s prescribed dose and schedule.")
             }
         }.navigationTitle("Administration")
     }
