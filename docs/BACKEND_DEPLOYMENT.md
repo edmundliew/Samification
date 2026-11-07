@@ -40,3 +40,8 @@ Six live schema/grant checks and 13 real Auth/API checks passed. One temporary u
 Migration SHA-256: `c0a3eaa956ff626a2a2828962812f73bc1f7fe7e21284d306f3c85ac45d826d2`. The SQL editor content was copied back and checked against the exact tested source before execution. Supabase returned “Success. No rows returned.” Seven read-only live checks verified three RLS-protected tables, no direct client writes, no unauthenticated evidence reads, three restricted security-definer RPCs, a private scoring helper, no seeded evidence or staff memberships, and successful exact-match scoring using a fictional in-memory example. No clinical rows or Auth identities were created for these checks. Proof: `outputs/samification-evidence-activation-verified.png` in the parent workspace.
 
 This activation was run manually through SQL Editor, as with 001–003. Reconcile CLI migration history before adopting CLI deployment; do not reapply existing CREATE statements. The valid paired clinician/patient workflow remains unverified live until the intended administrator and approved clinician are provisioned.
+
+
+## 8 November 2026: first administrator provisioned
+
+The explicitly approved initial administrator bootstrap completed for the verified identity. Five live database checks passed, including the active administrator helper, audit record, absence of clinician membership and blocked direct client membership writes. Transaction-local role/JWT simulation was used for database permission checks; native Auth sign-in remains pending. No clinician grant, clinical patient row or email configuration change was performed. See `STAFF_ACCESS.md` for the verification limits and screenshot artifact.

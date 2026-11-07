@@ -1,5 +1,7 @@
 # v0.2 staff access — development checkpoint
 
+**Current status — 8 November 2026:** The initial administrator is provisioned for the user-verified account after explicit approval. Five live database checks passed. No clinician role has been granted. Successful native email-link sign-in and the complete paired workflow remain pending; earlier sections below describe historical checkpoints. See `ASSESSMENT_EVIDENCE.md` for the connected game/backend implementation.
+
 This is preparatory work, not a completed v0.2 release. Medication review, assignments, patient gameplay and results remain the offline demo. Patient pairing, persistent clinical records and backend scoring are still pending.
 
 ## Added
@@ -76,3 +78,12 @@ Validation: **40 Swift tests passed**, including copied Outlook Markdown/HTML, w
 The live Auth log for the reported pre-login permission error showed HTTP 403, machine code `otp_expired`, and `One-time token not found`. The client had classified every HTTP 403 as a staff authorisation failure. Auth errors now use their machine codes to distinguish expired/invalid/used one-time links, email-send quota failures and recipient restrictions. Unknown verification failures have a separate sign-in message. Raw server messages are not reflected into the UI. Clinical permission failures still retain the existing forbidden-access handling.
 
 Validation: **43 Swift tests passed**. After rebuilding and launching the native app, a deliberately fictional token was submitted to the real verification endpoint. The app displayed the correct `otp_expired` explanation and did not sign in. No email was sent, real user token consumed, staff role granted or clinical row created during this negative test. The user's original reported failure was diagnosed from server log error codes, not by reusing their posted login link. Successful live native sign-in remains unverified until a valid unused link is available; the known default-email sending quota remains a separate constraint.
+
+
+## 8 November — first administrator activated
+
+Following explicit approval for the exact verified account, the prepared owner-only bootstrap was applied successfully through Supabase SQL Editor. Editor contents were copied back and matched to the tested source plus the explicitly selected Auth UUID before execution. The guarded transaction inserted the administrator membership and its audit event. It did not grant clinician access or change Auth/email settings. Identity credentials and UUID are not included in this source record.
+
+Five live checks passed: administrator helper true; no clinician membership; bootstrap audit event present; admission SELECT returned no rows; authenticated direct membership writes blocked. Effective-permission checks used a transaction-local `authenticated` database role and the intended identity's simulated JWT claims, then rolled back those session settings. They validate database permissions, not a successful native Auth session. The live clinical admission tables were empty, so the read check alone does not establish isolation across populated wards; the existing isolated access tests cover that boundary.
+
+Proof is `outputs/samification-first-admin-verified.png` in the parent workspace. No bootstrap rerun is needed; its first-administrator guard now rejects another initial bootstrap. Administrator sign-in still requires a valid unused email link; the earlier expired-link and default email quota constraints are separate from the active role. A separate approved clinician identity/ward and a successful paired end-to-end walkthrough are still needed.
