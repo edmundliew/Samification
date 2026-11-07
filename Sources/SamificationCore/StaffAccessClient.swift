@@ -68,15 +68,21 @@ public struct StaffAccessClient: Sendable {
         _ = try await request("/auth/v1/otp", method: "POST", body: ["email": email, "create_user": true])
     }
     public func verifyCode(email: String, code: String) async throws -> StaffSession {
+        guard Self.validEmailCode(code) else { throw StaffAPIError.rejected }
         let data = try await request("/auth/v1/verify", method: "POST", body: ["email": email, "token": code, "type": "email"])
         return try JSONDecoder().decode(StaffSession.self, from: data)
     }
     // Consume the original email verification link through the JSON endpoint.
     // Never visit the link or its redirect destination, and never persist its token.
-    public func verifyEmailLink(_ text: String, expectedEmail: String) async throws -> StaffSession {
+    public static func validEmailLink(_ text: String) -> Bool { (try? emailLinkParameters(text)) != nil }
+    public static func validEmailCode(_ text: String) -> Bool {
+        let code = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        return (6...10).contains(code.count) && code.allSatisfy { $0.isASCII && $0.isNumber }
+    }
+    private static func emailLinkParameters(_ text: String) throws -> (String, String) {
         guard text.utf8.count <= 4096,
               let url = URLComponents(string: text.trimmingCharacters(in: .whitespacesAndNewlines)),
-              url.scheme == "https", url.host == baseURL.host, url.port == nil,
+              url.scheme == "https", url.host == "vqexfcvzoryocjnzjozv.supabase.co", url.port == nil,
               url.user == nil, url.password == nil, url.path == "/auth/v1/verify", url.fragment == nil else { throw StaffAPIError.rejected }
         let items = url.queryItems ?? []
         let tokens = items.filter { $0.name == "token" || $0.name == "token_hash" }
@@ -84,6 +90,10 @@ public struct StaffAccessClient: Sendable {
         guard tokens.count == 1, types.count == 1, let hash = tokens[0].value,
               (20...256).contains(hash.count), hash.allSatisfy({ $0.isASCII && ($0.isLetter || $0.isNumber || $0 == "_" || $0 == "-") }),
               let type = types[0].value, ["email", "signup", "magiclink"].contains(type) else { throw StaffAPIError.rejected }
+        return (hash, type)
+    }
+    public func verifyEmailLink(_ text: String, expectedEmail: String) async throws -> StaffSession {
+        let (hash, type) = try Self.emailLinkParameters(text)
         let data = try await request("/auth/v1/verify", method: "POST", body: ["token_hash": hash, "type": type])
         let session = try JSONDecoder().decode(StaffSession.self, from: data)
         guard session.user.email?.caseInsensitiveCompare(expectedEmail.trimmingCharacters(in: .whitespacesAndNewlines)) == .orderedSame else {

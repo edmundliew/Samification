@@ -93,3 +93,23 @@ extension StaffAccessTests {
         XCTAssertEqual(last.value(forHTTPHeaderField: "Authorization"), "Bearer test-token")
     }
 }
+
+extension StaffAccessTests {
+    func testSignInFormValidationSeparatesButtonLabelsLinksAndNumericCodes() {
+        XCTAssertFalse(StaffAccessClient.validEmailLink("Sign in"))
+        XCTAssertFalse(StaffAccessClient.validEmailCode("Sign in"))
+        XCTAssertFalse(StaffAccessClient.validEmailCode("12345"))
+        XCTAssertFalse(StaffAccessClient.validEmailCode("１２３４５６"))
+        XCTAssertTrue(StaffAccessClient.validEmailCode("123456"))
+        let link = url + "/auth/v1/verify?token=" + String(repeating: "a", count: 64) + "&type=magiclink"
+        XCTAssertTrue(StaffAccessClient.validEmailLink(link))
+        XCTAssertFalse(StaffAccessClient.validEmailCode(link))
+    }
+    func testInvalidNumericCodeNeverReachesTheServer() async throws {
+        let transport = MockStaffTransport()
+        let client = try StaffAccessClient(url: url, publishableKey: key, transport: transport)
+        do { _ = try await client.verifyCode(email: "fictional@example.invalid", code: "Sign in"); XCTFail("Button label accepted as code") } catch {}
+        let request = await transport.last()
+        XCTAssertNil(request)
+    }
+}

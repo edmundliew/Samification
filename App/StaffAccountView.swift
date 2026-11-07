@@ -41,6 +41,7 @@ import Observation
         }
     }
     func signIn() async {
+        guard StaffAccessClient.validEmailCode(code) else { notice = "Enter the numeric code from your email, not the words on its button."; failed = true; return }
         await perform { client in
             self.session = try await client.verifyCode(email: self.email, code: self.code.trimmingCharacters(in: .whitespacesAndNewlines))
             self.code = ""
@@ -48,11 +49,13 @@ import Observation
         }
     }
     func signInWithLink() async {
+        guard StaffAccessClient.validEmailLink(emailLink) else { notice = "Copy the actual link address from the email button, not its words. Use the original, unopened Supabase sign-in link."; failed = true; return }
         let link = emailLink; emailLink = ""
         await perform { client in
             self.session = try await client.verifyEmailLink(link, expectedEmail: self.email)
             self.code = ""
             try await self.load(client)
+            self.notice = "Signed in successfully. Your approved access is shown below."
         }
     }
     func refresh() async { await perform { try await self.load($0) } }
@@ -104,8 +107,8 @@ struct StaffAccountView: View {
         @Bindable var account = account
         Form {
             Section {
-                Text("Connected staff access · Development preview").font(.headline)
-                Text("This screen manages staff access. Approved clinicians can open the connected admission workspace. Other medication tabs remain the saved local demo. Clinician and patient connections are active; approved access is required.")
+                Text("Connected staff access").font(.headline)
+                Text("Sign in first. Administrator or clinician access requires separate approval.").font(.caption)
             }
             if !account.configured {
                 Section { Notice(text: "Connected access is not configured in this build. Add the project URL and publishable key using Config/Local.xcconfig.", color: .orange) }
@@ -175,19 +178,26 @@ struct StaffAccountView: View {
             } else {
                 Section("Staff sign-in") {
                     TextField("Email address", text: $account.email).textContentType(.emailAddress).textInputAutocapitalization(.never).autocorrectionDisabled().disabled(account.codeSent)
-                    if account.codeSent {
+                    if account.emailValid {
                         SecureField("Paste original sign-in link", text: $account.emailLink).textInputAutocapitalization(.never).autocorrectionDisabled().privacySensitive()
-                        Button("Verify link & sign in") { Task { await account.signInWithLink() } }.disabled(account.emailLink.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                        Text("Copy the link from your sign-in email without opening it. Paste it here, not into chat. Links expire and work once.").font(.caption)
-                        TextField("Email code (if provided)", text: $account.code).textContentType(.oneTimeCode).autocorrectionDisabled()
-                        Button("Verify & sign in") { Task { await account.signIn() } }.disabled(account.code.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                        Button("Verify link & sign in") { Task { await account.signInWithLink() } }.disabled(!StaffAccessClient.validEmailLink(account.emailLink))
+                        if !account.emailLink.isEmpty && !StaffAccessClient.validEmailLink(account.emailLink) {
+                            Text("This is not a complete sign-in link. In your email, right-click the button and choose Copy Link Address; paste that address here.").font(.caption).foregroundStyle(.red)
+                        }
+                        Text("Right-click the email button → Copy Link Address. Paste the address here without opening it in a browser.").font(.caption)
+                        DisclosureGroup("Have a numeric email code instead?") {
+                            TextField("Numeric email code", text: $account.code).textContentType(.oneTimeCode).keyboardType(.numberPad).autocorrectionDisabled()
+                            Button("Verify numeric code") { Task { await account.signIn() } }.disabled(!StaffAccessClient.validEmailCode(account.code))
+                        }
+                        if let notice = account.notice { Notice(text: notice, color: account.failed ? .red : .teal) }
+                        if account.busy { ProgressView("Verifying with Supabase…") }
                         Button("Use another email") { account.codeSent = false; account.code = ""; account.emailLink = "" }
                     }
                     Button(account.codeSent ? "Send another sign-in email" : "Send sign-in email") { Task { await account.sendCode() } }.disabled(!account.emailValid)
                     Text("Signing in creates an authentication account if needed. It does not grant a staff role.").font(.caption)
                 }
             }
-            if let notice = account.notice { Section { Notice(text: notice, color: account.failed ? .red : .teal) } }
+            if let notice = account.notice, account.session != nil || !account.emailValid { Section { Notice(text: notice, color: account.failed ? .red : .teal) } }
             if account.busy { ProgressView("Contacting Supabase…") }
         }.disabled(account.busy).navigationTitle("Staff account")
     }
