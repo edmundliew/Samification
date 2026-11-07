@@ -113,3 +113,37 @@ extension StaffAccessTests {
         XCTAssertNil(request)
     }
 }
+
+extension StaffAccessTests {
+    private var fictionalSignInLink: String { url + "/auth/v1/verify?token=" + String(repeating: "a", count: 64) + "&type=magiclink&redirect_to=http%3A%2F%2Flocalhost%3A3000" }
+    private func safeLink(_ inner: String, host: String = "jpn01.safelinks.protection.outlook.com") -> String {
+        var wrapper = URLComponents(); wrapper.scheme = "https"; wrapper.host = host; wrapper.path = "/"
+        wrapper.queryItems = [URLQueryItem(name: "url", value: inner), URLQueryItem(name: "data", value: "fictional-tracking-only")]
+        return wrapper.string!
+    }
+    func testCopiedOutlookMarkdownAndHtmlKeepOnlyPinnedCredential() {
+        let wrapped = safeLink(fictionalSignInLink)
+        XCTAssertTrue(StaffAccessClient.validEmailLink(wrapped))
+        XCTAssertTrue(StaffAccessClient.validEmailLink("Your sign-in link\n[Sign in](\(wrapped.replacingOccurrences(of: "&", with: "\\&")))"))
+        XCTAssertTrue(StaffAccessClient.validEmailLink("<a href=\"\(wrapped.replacingOccurrences(of: "&", with: "&amp;"))\">Sign in</a>"))
+        XCTAssertTrue(StaffAccessClient.validEmailLink("[Sign in](\(wrapped) \"Protected by Outlook: \(fictionalSignInLink)\")"))
+        XCTAssertFalse(StaffAccessClient.validEmailLink("Sign in"))
+    }
+    func testSafeLinksExtractionRejectsOtherProjectsAndAmbiguousCredentials() {
+        XCTAssertFalse(StaffAccessClient.validEmailLink(safeLink("https://example.invalid/auth/v1/verify?token=" + String(repeating: "a", count: 64) + "&type=magiclink")))
+        XCTAssertFalse(StaffAccessClient.validEmailLink(safeLink(fictionalSignInLink, host: "fake-safelinks.protection.outlook.com")))
+        XCTAssertFalse(StaffAccessClient.validEmailLink(safeLink(fictionalSignInLink) + " " + fictionalSignInLink.replacingOccurrences(of: String(repeating: "a", count: 64), with: String(repeating: "b", count: 64))))
+        XCTAssertFalse(StaffAccessClient.validEmailLink(safeLink(safeLink(safeLink(safeLink(fictionalSignInLink))))))
+        XCTAssertFalse(StaffAccessClient.validEmailLink(String(repeating: "x", count: 17000) + fictionalSignInLink))
+    }
+    func testWrappedEmailNeverContactsOutlookOrRedirectDestination() async throws {
+        let transport = MockStaffTransport(body: "{\"access_token\":\"fictional-token\",\"user\":{\"id\":\"00000000-0000-4000-8000-000000000001\",\"email\":\"fictional@example.invalid\"}}")
+        let client = try StaffAccessClient(url: url, publishableKey: key, transport: transport)
+        _ = try await client.verifyEmailLink("[Sign in](\(safeLink(fictionalSignInLink)))", expectedEmail: "fictional@example.invalid")
+        let request = await transport.last()!
+        XCTAssertEqual(request.url?.absoluteString, url + "/auth/v1/verify")
+        let body = try JSONSerialization.jsonObject(with: request.httpBody!) as! [String: String]
+        XCTAssertEqual(body["token_hash"], String(repeating: "a", count: 64))
+        XCTAssertEqual(body["type"], "magiclink")
+    }
+}

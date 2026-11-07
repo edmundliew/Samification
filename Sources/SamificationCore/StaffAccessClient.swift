@@ -79,8 +79,32 @@ public struct StaffAccessClient: Sendable {
         let code = text.trimmingCharacters(in: .whitespacesAndNewlines)
         return (6...10).contains(code.count) && code.allSatisfy { $0.isASCII && $0.isNumber }
     }
+    // Parse copied email/Markdown and bounded Safe Links wrappers locally. Never follow URLs.
     private static func emailLinkParameters(_ text: String) throws -> (String, String) {
-        guard text.utf8.count <= 4096,
+        guard text.utf8.count <= 16384 else { throw StaffAPIError.rejected }
+        let normalized = text.replacingOccurrences(of: "\\&", with: "&").replacingOccurrences(of: "&amp;", with: "&")
+        let regex = try NSRegularExpression(pattern: #"https://[^\s<>"()]+"#)
+        let matches = regex.matches(in: normalized, range: NSRange(normalized.startIndex..., in: normalized))
+        guard !matches.isEmpty, matches.count <= 32 else { throw StaffAPIError.rejected }
+        var credentials: [String: (String, String)] = [:]
+        for match in matches {
+            guard let range = Range(match.range, in: normalized) else { continue }
+            var candidate = String(normalized[range])
+            for _ in 0..<3 {
+                guard let wrapper = URLComponents(string: candidate), let host = wrapper.host?.lowercased(),
+                      host == "safelinks.protection.outlook.com" || host.hasSuffix(".safelinks.protection.outlook.com") else { break }
+                guard wrapper.scheme == "https", wrapper.user == nil, wrapper.password == nil, wrapper.port == nil,
+                      let items = wrapper.queryItems, items.filter({ $0.name == "url" }).count == 1,
+                      let inner = items.first(where: { $0.name == "url" })?.value else { throw StaffAPIError.rejected }
+                candidate = inner
+            }
+            if let pair = try? directEmailLinkParameters(candidate) { credentials[pair.0 + ":" + pair.1] = pair }
+        }
+        guard credentials.count == 1, let pair = credentials.values.first else { throw StaffAPIError.rejected }
+        return pair
+    }
+    private static func directEmailLinkParameters(_ text: String) throws -> (String, String) {
+        guard text.utf8.count <= 16384,
               let url = URLComponents(string: text.trimmingCharacters(in: .whitespacesAndNewlines)),
               url.scheme == "https", url.host == "vqexfcvzoryocjnzjozv.supabase.co", url.port == nil,
               url.user == nil, url.password == nil, url.path == "/auth/v1/verify", url.fragment == nil else { throw StaffAPIError.rejected }

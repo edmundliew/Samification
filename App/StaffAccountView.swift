@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 import Observation
 
 @MainActor @Observable final class StaffAccountStore {
@@ -46,6 +47,18 @@ import Observation
             self.session = try await client.verifyCode(email: self.email, code: self.code.trimmingCharacters(in: .whitespacesAndNewlines))
             self.code = ""
             try await self.load(client)
+        }
+    }
+    func pasteEmailLink() {
+        // Only read the clipboard after the user explicitly taps Paste email link.
+        let pasteboard = UIPasteboard.general
+        let html = pasteboard.data(forPasteboardType: "public.html").flatMap { String(data: $0, encoding: .utf8) }
+        let options = [pasteboard.url?.absoluteString, html, pasteboard.string].compactMap { $0 }
+        if let value = options.first(where: StaffAccessClient.validEmailLink) {
+            emailLink = value; notice = nil; failed = false
+        } else {
+            emailLink = ""; failed = true
+            notice = "The clipboard has no sign-in address. Right-click the email's Sign in button and choose Copy Link Address, then tap Paste email link. Copying the words Sign in alone is not enough."
         }
     }
     func signInWithLink() async {
@@ -179,10 +192,11 @@ struct StaffAccountView: View {
                 Section("Staff sign-in") {
                     TextField("Email address", text: $account.email).textContentType(.emailAddress).textInputAutocapitalization(.never).autocorrectionDisabled().disabled(account.codeSent)
                     if account.emailValid {
+                        Button("Paste email link", systemImage: "doc.on.clipboard") { account.pasteEmailLink() }
                         SecureField("Paste original sign-in link", text: $account.emailLink).textInputAutocapitalization(.never).autocorrectionDisabled().privacySensitive()
                         Button("Verify link & sign in") { Task { await account.signInWithLink() } }.disabled(!StaffAccessClient.validEmailLink(account.emailLink))
                         if !account.emailLink.isEmpty && !StaffAccessClient.validEmailLink(account.emailLink) {
-                            Text("This is not a complete sign-in link. In your email, right-click the button and choose Copy Link Address; paste that address here.").font(.caption).foregroundStyle(.red)
+                            Text("No sign-in address was found. Right-click the email button → Copy Link Address, then use Paste email link.").font(.caption).foregroundStyle(.red)
                         }
                         Text("Right-click the email button → Copy Link Address. Paste the address here without opening it in a browser.").font(.caption)
                         DisclosureGroup("Have a numeric email code instead?") {

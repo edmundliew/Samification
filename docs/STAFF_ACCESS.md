@@ -62,3 +62,11 @@ A simulator sign-in attempt submitted the button caption `Sign in` through the n
 The shared link parser validates both the submit button state and the actual network operation. Numeric codes require 6–10 ASCII digits. A plain copied caption in the link field produces an immediate instruction to copy the actual link address. The app keeps original verification tokens in memory only. These input checks do not grant roles or bypass server verification.
 
 Validation: **37 Swift tests passed**. The updated app built and launched on the iPhone simulator. Entering a fictional button caption into the link field showed the inline error and kept verification disabled. The test value was cleared; the app is left on the link form for the user. Successful native authentication remains pending the user's valid one-use email link. No additional live roles or database changes were made.
+
+## 8 November — Outlook copied-link compatibility
+
+Outlook may copy a Safe Links URL, formatted email, or only the selected button caption. The parser now extracts a single unique credential from copied text/Markdown/HTML, locally unwraps up to three Outlook Safe Links envelopes, and still accepts only this project's HTTPS verification endpoint and supported sign-in types. It rejects ambiguous credentials, malformed wrappers and oversized input. It never opens Outlook, a tracking link or the configured redirect destination.
+
+A user-initiated **Paste email link** button tries the clipboard's URL, HTML and text representations. It reads the clipboard only after that button is tapped; no clipboard data is logged or persisted. If every representation contains only `Sign in`, the app explicitly explains that Copy Link Address is required. The actual credential shared in chat was not opened, tested, saved in files or added to fixtures; all new tests use fictional token strings.
+
+Validation: **40 Swift tests passed**, including copied Outlook Markdown/HTML, wrapper bounds, duplicate credentials, foreign origins and the pinned outgoing verification request. End-to-end sign-in still requires a valid, unused user-supplied link. The existing Supabase sending rate limit is a separate delivery constraint; this change does not resend email or alter email settings.
