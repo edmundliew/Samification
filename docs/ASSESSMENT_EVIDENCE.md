@@ -1,6 +1,6 @@
 # Connected assessment evidence — 7 November 2026
 
-Implementation is on `development/v0.2-staff-access`. Migration 004 is prepared and tested locally; **not yet applied to the live project**. This is a development build, not a TestFlight release or clinically validated assessment.
+Implementation is on `development/v0.2-staff-access`. Migration 004 was applied to the live Supabase project on 7 November 2026 following explicit approval; all seven live deployment checks passed. This is a development build, not a TestFlight release or clinically validated assessment.
 
 ## Patient workflow
 
@@ -38,5 +38,5 @@ Admission → Review challenge evidence → choose a started challenge. The scre
 - 32 Swift tests, including canonical wire encoding, retry identity preservation and six independently specified scoring fixtures.
 - 225 disposable PostgreSQL checks: 26 staff access + 53 clinical workflow + 33 pairing + 113 evidence/scoring. They exercise patient/staff boundaries, malformed trays, duplicate/changed/stale requests, hint gating, incorrect completion, immutable records, revocation, supersession and shared Swift/PostgreSQL scoring fixtures.
 - Native iPhone simulator build succeeds in Xcode. Command-line native compilation remains restricted by the host macro sandbox; core Swift tests run successfully.
-- Migration 004 requires a final live activation step. Existing 001–003 are already deployed; do not reapply them. No first administrator, staff clinical scope or real patient records are provisioned by 004.
+- Migration 004 is now deployed. Existing 001–003 are already deployed; do not reapply them. No first administrator, staff clinical scope or real patient records are provisioned by 004.
 - Still required: live valid paired clinician/patient walkthrough, iPad/device interaction and accessibility validation, signing and TestFlight. Email sender configuration remains deferred.

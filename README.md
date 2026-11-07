@@ -58,4 +58,4 @@ See [connected workflow and pairing validation](docs/CONNECTED_WORKFLOW.md) for 
 
 ### Connected assessment development
 
-The development branch now includes server-scored patient challenges, immutable submission history and scoped clinician reviews. See [assessment evidence](docs/ASSESSMENT_EVIDENCE.md). Migration 004 is tested locally and awaits live activation; this is not yet a TestFlight release.
+The development branch now includes server-scored patient challenges, immutable submission history and scoped clinician reviews. See [assessment evidence](docs/ASSESSMENT_EVIDENCE.md). Migration 004 is deployed and its seven live checks passed; this is not yet a TestFlight release.

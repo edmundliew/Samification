@@ -39,4 +39,4 @@ End-to-end valid pairing and clinician operations remain untested against live p
 
 ## 7 November — connected game and audit evidence
 
-Patient game actions, central scoring and clinician evidence/review screens are implemented. See [assessment evidence](ASSESSMENT_EVIDENCE.md) for scoring definitions, security boundaries, validation and deployment status. Migration 004 remains pending live activation; existing clinical/pairing APIs are unchanged.
+Patient game actions, central scoring and clinician evidence/review screens are implemented. See [assessment evidence](ASSESSMENT_EVIDENCE.md) for scoring definitions, security boundaries, validation and deployment status. Migration 004 is deployed and all seven live deployment checks passed; existing clinical/pairing APIs are unchanged. A valid paired staff/patient walkthrough remains pending staff provisioning.

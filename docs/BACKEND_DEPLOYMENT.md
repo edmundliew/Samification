@@ -32,6 +32,11 @@ Enabled **Allow anonymous sign-ins** and saved it in Supabase Auth. Email confir
 
 Six live schema/grant checks and 13 real Auth/API checks passed. One temporary unpaired Auth identity was created for verification and signed out; the user record was not permanently deleted. No clinical records were created. See `docs/CONNECTED_WORKFLOW.md` for the verified cases and remaining end-to-end limits. These migrations were executed manually through SQL Editor and still require migration-history reconciliation before future CLI-managed deployment.
 
-## Prepared 7 November 2026: assessment evidence migration 004
+## Deployed 7 November 2026: assessment evidence migration 004
 
-`202611070004_assessment_evidence.sql` adds three RLS-protected evidence/review tables and narrow patient action/history and clinician review RPCs. It does not seed identities, memberships or patient records. Application roles have no direct writes. Locally tested against all preceding migrations; **not yet run in the live project**. See `ASSESSMENT_EVIDENCE.md` for the test evidence and rollout limits.
+`202611070004_assessment_evidence.sql` adds three RLS-protected evidence/review tables and narrow patient action/history and clinician review RPCs. It does not seed identities, memberships or patient records. Application roles have no direct writes. Locally tested against all preceding migrations; **successfully applied to the live project** after the user approved activation. See `ASSESSMENT_EVIDENCE.md` for the test evidence and rollout limits.
+
+
+Migration SHA-256: `c0a3eaa956ff626a2a2828962812f73bc1f7fe7e21284d306f3c85ac45d826d2`. The SQL editor content was copied back and checked against the exact tested source before execution. Supabase returned “Success. No rows returned.” Seven read-only live checks verified three RLS-protected tables, no direct client writes, no unauthenticated evidence reads, three restricted security-definer RPCs, a private scoring helper, no seeded evidence or staff memberships, and successful exact-match scoring using a fictional in-memory example. No clinical rows or Auth identities were created for these checks. Proof: `outputs/samification-evidence-activation-verified.png` in the parent workspace.
+
+This activation was run manually through SQL Editor, as with 001–003. Reconcile CLI migration history before adopting CLI deployment; do not reapply existing CREATE statements. The valid paired clinician/patient workflow remains unverified live until the intended administrator and approved clinician are provisioned.
