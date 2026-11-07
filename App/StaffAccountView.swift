@@ -29,7 +29,7 @@ import Observation
         do { try await action(client) }
         catch {
             if case StaffAPIError.authentication = error { clearSession() }
-            notice = (error as? StaffAPIError)?.localizedDescription ?? "Unable to read the service response. Please try again."
+            notice = (error as? StaffAPIError)?.localizedDescription ?? (error as? StaffAuthError)?.localizedDescription ?? "Unable to read the service response. Please try again."
             failed = true
         }
     }

@@ -28,6 +28,17 @@ public enum StaffAPIError: Error, LocalizedError {
         }
     }
 }
+public enum StaffAuthError: Error, LocalizedError {
+    case expiredLink, emailRateLimited, emailDeliveryRestricted, verificationFailed
+    public var errorDescription: String? {
+        switch self {
+        case .expiredLink: return "This sign-in link is invalid, expired or already used (otp_expired). Use a fresh unopened email link. This is not a staff-permission decision."
+        case .emailRateLimited: return "Supabase has reached its email-sending limit (over_email_send_rate_limit). No new email was sent. Wait for the limit to reset or configure the sender service."
+        case .emailDeliveryRestricted: return "The current email service cannot send to this address (email_address_not_authorized). Sender configuration is required."
+        case .verificationFailed: return "Supabase could not verify this sign-in link or code. Use the newest unopened link and check that the email address matches."
+        }
+    }
+}
 public protocol StaffHTTPTransport: Sendable {
     func data(for request: URLRequest) async throws -> (Data, URLResponse)
 }
@@ -56,6 +67,19 @@ public struct StaffAccessClient: Sendable {
         let result: (Data, URLResponse)
         do { result = try await transport.data(for: request) } catch { throw StaffAPIError.unavailable }
         guard let response = result.1 as? HTTPURLResponse else { throw StaffAPIError.unavailable }
+        // Auth uses HTTP 403 for expired OTPs too. Interpret its machine code,
+        // without reflecting server messages or credentials into logs/UI.
+        if path.hasPrefix("/auth/v1/"), (400..<500).contains(response.statusCode) {
+            let detail = (try? JSONSerialization.jsonObject(with: result.0)) as? [String: Any]
+            let code = detail?["error_code"] as? String ?? detail?["code"] as? String
+            switch code {
+            case "otp_expired": throw StaffAuthError.expiredLink
+            case "over_email_send_rate_limit": throw StaffAuthError.emailRateLimited
+            case "email_address_not_authorized": throw StaffAuthError.emailDeliveryRestricted
+            default:
+                if path == "/auth/v1/verify" { throw StaffAuthError.verificationFailed }
+            }
+        }
         switch response.statusCode {
         case 200..<300: return result.0
         case 401: throw StaffAPIError.authentication

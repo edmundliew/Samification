@@ -147,3 +147,25 @@ extension StaffAccessTests {
         XCTAssertEqual(body["type"], "magiclink")
     }
 }
+
+extension StaffAccessTests {
+    func testExpiredAuthLinkDoesNotMasqueradeAsMissingStaffPermission() async throws {
+        let transport = MockStaffTransport(status: 403, body: "{\"error_code\":\"otp_expired\",\"msg\":\"Token has expired or is invalid\"}")
+        let client = try StaffAccessClient(url: url, publishableKey: key, transport: transport)
+        do { _ = try await client.verifyEmailLink(fictionalSignInLink, expectedEmail: "fictional@example.invalid"); XCTFail("Expired link accepted") }
+        catch StaffAuthError.expiredLink {} catch { XCTFail("Incorrect error: \(error)") }
+    }
+    func testEmailQuotaAndRecipientRestrictionsAreReportedSeparately() async throws {
+        for (status, code) in [(429,"over_email_send_rate_limit"),(403,"email_address_not_authorized")] {
+            let client = try StaffAccessClient(url: url, publishableKey: key, transport: MockStaffTransport(status: status, body: "{\"error_code\":\"\(code)\"}"))
+            do { try await client.sendCode(email: "fictional@example.invalid"); XCTFail("Rejected send reported as success") }
+            catch StaffAuthError.emailRateLimited { XCTAssertEqual(status,429) }
+            catch StaffAuthError.emailDeliveryRestricted { XCTAssertEqual(status,403) }
+        }
+    }
+    func testUnknownAuthVerificationFailureDoesNotExposeRawMessages() async throws {
+        let client = try StaffAccessClient(url: url, publishableKey: key, transport: MockStaffTransport(status: 403, body: "{\"msg\":\"Fictional private server detail\"}"))
+        do { _ = try await client.verifyEmailLink(fictionalSignInLink, expectedEmail: "fictional@example.invalid"); XCTFail("Rejected link accepted") }
+        catch StaffAuthError.verificationFailed { XCTAssertFalse(StaffAuthError.verificationFailed.localizedDescription.contains("private server")) }
+    }
+}
