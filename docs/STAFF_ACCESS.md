@@ -38,3 +38,19 @@ node supabase/tests/staff-access.mjs /absolute/path/to/pglite/dist/index.js
 ```
 
 The script creates a disposable in-memory PostgreSQL database; it does not connect to Supabase. It uses only fictional users and wards. Run the Swift tests with the full Xcode toolchain as described in README.
+
+## 7 November — first administrator preflight and email-link support
+
+Migrations 001–004 are deployed; current workflow status is in `ASSESSMENT_EVIDENCE.md`. A fresh owner-session lookup found no application Auth identity for the intended initial administrator. No administrator or clinician membership has been granted. Dashboard owner sign-in remains separate from app sign-in.
+
+The Account screen now accepts the original Supabase email sign-in/confirmation link as an alternative to a numeric email code. This avoids requiring custom SMTP/template editing for the first project-owner test account. Request a sign-in email, copy its original link without opening it, and paste it into the secure field in the native app. Do not paste login links into chat. The client accepts only this project's HTTPS `/auth/v1/verify` link, rejects ambiguous tokens, recovery/invite/email-change flows and fragments, exchanges the token hash via the pinned JSON endpoint and checks the returned email against the requested identity. It never visits the email link's redirect destination. Link/session values remain in memory and are not logged or committed.
+
+Default Supabase email delivery may restrict recipients and rate-limit requests. Supporting the default link format does not establish delivery to arbitrary recipients; custom sender configuration remains necessary before a broad pilot, and can still be configured later without changing role approval logic.
+
+Validation: **35 Swift tests passed**, including pinned verification destination, duplicate/type rejection, ignored redirect destinations and mismatched-user rejection/sign-out. Native build and launch verification are performed separately. Administrator grant still requires verified Auth identity and explicit action-time approval; email verification alone grants no role.
+
+References: [Supabase verification API](https://supabase.com/docs/reference/swift/auth-verifyotp), [default email-link format](https://supabase.com/docs/guides/auth/auth-email-templates).
+
+The first live sign-in email request was accepted from the native app on 7 November. Delivery and user verification are still pending. The app is left on its Account verification form in the Mac iPhone simulator. No login credential was read from email or copied into chat.
+
+A separate owner-only `supabase/admin/bootstrap-first-administrator.sql` is now prepared. It refuses execution without an explicitly supplied verified Auth UUID, rejects anonymous/unconfirmed/never-signed-in identities, refuses a second initial administrator (including when an existing administrator is suspended), grants only the unscoped administrator role and records the bootstrap in the access audit. It is not part of automatic migrations and has **not** been run live. Ten isolated PostgreSQL guard checks passed. The next live step requires successful app sign-in and explicit privilege-grant confirmation for that exact identity.

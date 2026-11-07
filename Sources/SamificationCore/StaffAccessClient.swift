@@ -71,6 +71,27 @@ public struct StaffAccessClient: Sendable {
         let data = try await request("/auth/v1/verify", method: "POST", body: ["email": email, "token": code, "type": "email"])
         return try JSONDecoder().decode(StaffSession.self, from: data)
     }
+    // Consume the original email verification link through the JSON endpoint.
+    // Never visit the link or its redirect destination, and never persist its token.
+    public func verifyEmailLink(_ text: String, expectedEmail: String) async throws -> StaffSession {
+        guard text.utf8.count <= 4096,
+              let url = URLComponents(string: text.trimmingCharacters(in: .whitespacesAndNewlines)),
+              url.scheme == "https", url.host == baseURL.host, url.port == nil,
+              url.user == nil, url.password == nil, url.path == "/auth/v1/verify", url.fragment == nil else { throw StaffAPIError.rejected }
+        let items = url.queryItems ?? []
+        let tokens = items.filter { $0.name == "token" || $0.name == "token_hash" }
+        let types = items.filter { $0.name == "type" }
+        guard tokens.count == 1, types.count == 1, let hash = tokens[0].value,
+              (20...256).contains(hash.count), hash.allSatisfy({ $0.isASCII && ($0.isLetter || $0.isNumber || $0 == "_" || $0 == "-") }),
+              let type = types[0].value, ["email", "signup", "magiclink"].contains(type) else { throw StaffAPIError.rejected }
+        let data = try await request("/auth/v1/verify", method: "POST", body: ["token_hash": hash, "type": type])
+        let session = try JSONDecoder().decode(StaffSession.self, from: data)
+        guard session.user.email?.caseInsensitiveCompare(expectedEmail.trimmingCharacters(in: .whitespacesAndNewlines)) == .orderedSame else {
+            try? await signOut(token: session.access_token)
+            throw StaffAPIError.authentication
+        }
+        return session
+    }
     public func signOut(token: String) async throws { _ = try await request("/auth/v1/logout?scope=local", method: "POST", token: token) }
     public func scopes(token: String) async throws -> [CareScope] {
         try await decode([CareScope].self, path: "/rest/v1/care_scopes?select=id,name,active&order=name", token: token)

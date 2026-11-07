@@ -59,3 +59,37 @@ final class StaffAccessTests: XCTestCase {
         }
     }
 }
+
+extension StaffAccessTests {
+    func testEmailLinkUsesOnlyPinnedVerificationEndpoint() async throws {
+        let transport = MockStaffTransport(body: "{\"access_token\":\"test-token\",\"user\":{\"id\":\"00000000-0000-4000-8000-000000000001\",\"email\":\"Fictional@example.invalid\"}}")
+        let client = try StaffAccessClient(url: url, publishableKey: key, transport: transport)
+        let session = try await client.verifyEmailLink(url + "/auth/v1/verify?token=" + String(repeating: "a", count: 64) + "&type=signup&redirect_to=https%3A%2F%2Fexample.invalid", expectedEmail: "fictional@example.invalid")
+        XCTAssertEqual(session.user.email, "Fictional@example.invalid")
+        let request = await transport.last()!
+        XCTAssertEqual(request.url?.absoluteString, url + "/auth/v1/verify")
+        XCTAssertEqual(request.httpMethod, "POST")
+        XCTAssertNil(request.value(forHTTPHeaderField: "Authorization"))
+        let body = try JSONSerialization.jsonObject(with: request.httpBody!) as! [String: String]
+        XCTAssertEqual(body, ["token_hash": String(repeating: "a", count: 64), "type": "signup"])
+    }
+    func testEmailLinkRejectsOtherOriginsDuplicateTokensAndRecovery() async throws {
+        let transport = MockStaffTransport()
+        let client = try StaffAccessClient(url: url, publishableKey: key, transport: transport)
+        let hash = String(repeating: "a", count: 64)
+        let links = ["https://example.invalid/auth/v1/verify?token=\(hash)&type=email", url + "/auth/v1/verify?token=\(hash)&type=recovery", url + "/auth/v1/verify?token=\(hash)&token=\(hash)&type=email", url + "/auth/v1/verify?token=\(hash)&type=email&type=signup", url + "/auth/v1/verify?token=\(hash)&type=email#access_token=secret", url + ":443/auth/v1/verify?token=\(hash)&type=email"]
+        for link in links {
+            do { _ = try await client.verifyEmailLink(link, expectedEmail: "fictional@example.invalid"); XCTFail("Invalid link sent") } catch {}
+        }
+        let request = await transport.last()
+        XCTAssertNil(request)
+    }
+    func testEmailLinkCannotSilentlySwitchStaffIdentity() async throws {
+        let transport = MockStaffTransport(body: "{\"access_token\":\"test-token\",\"user\":{\"id\":\"00000000-0000-4000-8000-000000000001\",\"email\":\"other@example.invalid\"}}")
+        let client = try StaffAccessClient(url: url, publishableKey: key, transport: transport)
+        do { _ = try await client.verifyEmailLink(url + "/auth/v1/verify?token=" + String(repeating: "a", count: 64) + "&type=magiclink", expectedEmail: "fictional@example.invalid"); XCTFail("Identity mismatch accepted") } catch {}
+        let last = await transport.last()!
+        XCTAssertEqual(last.url?.path, "/auth/v1/logout")
+        XCTAssertEqual(last.value(forHTTPHeaderField: "Authorization"), "Bearer test-token")
+    }
+}

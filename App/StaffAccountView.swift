@@ -4,6 +4,7 @@ import Observation
 @MainActor @Observable final class StaffAccountStore {
     var email = ""
     var code = ""
+    var emailLink = ""
     var name = ""
     var reason = ""
     var selectedScope: UUID?
@@ -36,12 +37,20 @@ import Observation
         await perform { client in
             try await client.sendCode(email: self.email)
             self.codeSent = true
-            self.notice = "Check your email for the sign-in code."
+            self.notice = "Check your email. Copy the sign-in link without opening it, then paste it below. If your email contains a code, you can use that instead."
         }
     }
     func signIn() async {
         await perform { client in
             self.session = try await client.verifyCode(email: self.email, code: self.code.trimmingCharacters(in: .whitespacesAndNewlines))
+            self.code = ""
+            try await self.load(client)
+        }
+    }
+    func signInWithLink() async {
+        let link = emailLink; emailLink = ""
+        await perform { client in
+            self.session = try await client.verifyEmailLink(link, expectedEmail: self.email)
             self.code = ""
             try await self.load(client)
         }
@@ -85,7 +94,7 @@ import Observation
             try await client.signOut(token: token)
         }
     }
-    private func clearSession() { session = nil; memberships = []; scopes = []; requests = []; code = ""; codeSent = false; reason = ""; name = "" }
+    private func clearSession() { session = nil; memberships = []; scopes = []; requests = []; code = ""; emailLink = ""; codeSent = false; reason = ""; name = "" }
     func scopeName(_ id: UUID?) -> String { scopes.first { $0.id == id }?.name ?? "Unknown scope" }
 }
 
@@ -96,7 +105,7 @@ struct StaffAccountView: View {
         Form {
             Section {
                 Text("Connected staff access · Development preview").font(.headline)
-                Text("This screen manages staff access. Approved clinicians can open the connected admission workspace. Other medication tabs remain the saved local demo. Live clinician and patient connections require backend activation.")
+                Text("This screen manages staff access. Approved clinicians can open the connected admission workspace. Other medication tabs remain the saved local demo. Clinician and patient connections are active; approved access is required.")
             }
             if !account.configured {
                 Section { Notice(text: "Connected access is not configured in this build. Add the project URL and publishable key using Config/Local.xcconfig.", color: .orange) }
@@ -167,11 +176,14 @@ struct StaffAccountView: View {
                 Section("Staff sign-in") {
                     TextField("Email address", text: $account.email).textContentType(.emailAddress).textInputAutocapitalization(.never).autocorrectionDisabled().disabled(account.codeSent)
                     if account.codeSent {
-                        TextField("Email code", text: $account.code).textContentType(.oneTimeCode).autocorrectionDisabled()
+                        SecureField("Paste original sign-in link", text: $account.emailLink).textInputAutocapitalization(.never).autocorrectionDisabled().privacySensitive()
+                        Button("Verify link & sign in") { Task { await account.signInWithLink() } }.disabled(account.emailLink.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                        Text("Copy the link from your sign-in email without opening it. Paste it here, not into chat. Links expire and work once.").font(.caption)
+                        TextField("Email code (if provided)", text: $account.code).textContentType(.oneTimeCode).autocorrectionDisabled()
                         Button("Verify & sign in") { Task { await account.signIn() } }.disabled(account.code.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                        Button("Use another email") { account.codeSent = false; account.code = "" }
+                        Button("Use another email") { account.codeSent = false; account.code = ""; account.emailLink = "" }
                     }
-                    Button(account.codeSent ? "Send another code" : "Send sign-in code") { Task { await account.sendCode() } }.disabled(!account.emailValid)
+                    Button(account.codeSent ? "Send another sign-in email" : "Send sign-in email") { Task { await account.sendCode() } }.disabled(!account.emailValid)
                     Text("Signing in creates an authentication account if needed. It does not grant a staff role.").font(.caption)
                 }
             }
