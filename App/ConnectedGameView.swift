@@ -1,0 +1,150 @@
+import SwiftUI
+import Observation
+
+@MainActor @Observable final class ConnectedGameStore {
+    let entry: PatientInboxEntry
+    var tray = Tray()
+    var history: [AssessmentAction] = []
+    var result: AssessmentResult?
+    var pending: PendingAssessmentAction?
+    var busy = false
+    var loaded = false
+    var notice: String?
+    var showingFeedback = false
+    var showingHint = false
+    var showingReference = false
+    var accessValid = false
+    var finished: Bool { result?.completed == true }
+    var editable: Bool { loaded && accessValid && !busy && pending == nil && !finished }
+    init(entry: PatientInboxEntry) { self.entry = entry }
+    func invalidate() { accessValid = false; showingHint = false; showingReference = false; showingFeedback = false }
+    func load(token: String) async {
+        guard !busy, let client = BackendConfiguration.client() else { return }
+        busy = true; accessValid = false; notice = nil
+        do {
+            // Recheck inbox membership on every foreground/resume, including supersession.
+            let inbox = try await client.patientInbox(token: token)
+            guard inbox.contains(where: { $0.id == entry.id }) else { throw WorkflowError.invalid("This challenge is unavailable. Refresh your patient connection.") }
+            history = try await client.assessmentHistory(assignment: entry.id, token: token)
+            result = history.last?.result
+            if !loaded, let last = history.last(where: { $0.kind == "submit" }) { tray = try Tray.fromWire(last.payload) }
+            loaded = true; accessValid = true
+        } catch { notice = error.localizedDescription }
+        busy = false
+        if loaded && accessValid && history.isEmpty && pending == nil { await send("start", token: token) }
+    }
+    func send(_ kind: String, token: String) async {
+        guard !busy, accessValid, let client = BackendConfiguration.client() else { return }
+        if pending == nil { pending = PendingAssessmentAction(kind: kind, tray: ["submit", "finish"].contains(kind) ? tray : nil, medications: entry.gameMedications, expectedPrevious: result?.sequence ?? 0) }
+        guard let action = pending else { return }
+        busy = true; notice = nil; defer { busy = false }
+        do {
+            result = try await client.assessmentAction(assignment: entry.id, pending: action, token: token)
+            pending = nil
+            if action.kind == "submit" { showingFeedback = true; showingHint = false }
+            if action.kind == "hint" { showingHint = true }
+            if action.kind == "reference" { showingReference = true }
+            // A successful action is authoritative even if refreshing history fails.
+            do { history = try await client.assessmentHistory(assignment: entry.id, token: token) }
+            catch { accessValid = false; notice = "Action saved. Refresh to reload its audit history." }
+        } catch {
+            notice = "Action not confirmed. Retry this same action before continuing. \(error.localizedDescription)"
+            if let api = error as? StaffAPIError {
+                switch api {
+                case .authentication, .forbidden, .rejected:
+                    pending = nil; accessValid = false
+                    notice = "The server rejected this action. Refresh to check your access and challenge status."
+                case .configuration, .unavailable: break
+                }
+            }
+        }
+    }
+    func edited() { showingFeedback = false; showingHint = false }
+}
+
+struct ConnectedGameView: View {
+    let game: ConnectedGameStore
+    let token: String
+    @Environment(\.scenePhase) private var scenePhase
+    @State private var active: DayPeriod = .morning
+    private var meds: [Medication] { game.entry.gameMedications }
+    var body: some View {
+        ScrollView {
+            if game.accessValid {
+                VStack(alignment: .leading, spacing: 20) {
+                    Text(game.entry.practice ? "Practice · regimen v\(game.entry.regimen_version)" : "Assessment · regimen v\(game.entry.regimen_version)").font(.headline)
+                    Text("Select a compartment, then tap a pill. Drag into any compartment. Tap a tablet in the tray to remove it.")
+                    if game.result?.priorExposure == true { Notice(text: "A previous challenge for this regimen was started. Earlier exposure is recorded.", color: .orange) }
+                    Button("Open medication reference") { Task { await game.send("reference", token: token) } }.disabled(!game.editable)
+                    if game.showingReference { reference }
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 150))], spacing: 16) {
+                        ForEach(meds) { m in MedicationBag(medication: m, disabled: !game.editable) { game.tray.add(m.id, at: active); game.edited() } }
+                    }
+                    VStack(alignment: .leading) {
+                        Text("Your daily tray · taps add to \(active.title)").font(.headline)
+                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 145))], spacing: 12) {
+                            ForEach(DayPeriod.allCases) { period in compartment(period) }
+                        }
+                    }.padding().background(.brown.opacity(0.12), in: RoundedRectangle(cornerRadius: 20))
+                    Button("Clear all", systemImage: "arrow.counterclockwise") { game.tray = Tray(); game.edited() }.buttonStyle(.bordered).disabled(!game.editable || game.tray.isEmpty)
+                    HStack { Spacer(); Button("Check my daily tray") { Task { await game.send("submit", token: token) } }.buttonStyle(.borderedProminent).controlSize(.large).disabled(!game.editable || game.result == nil); Spacer() }
+                    if game.showingFeedback, let score = game.result?.score {
+                        Notice(text: score.correct ? "Correct! Your daily tray matches." : "Let’s review your tray.", color: score.correct ? .green : .red)
+                        ForEach(score.findings) { f in Text("\(meds.first { $0.id == f.medicationID }?.name ?? "Medication") · \(f.period.title): expected \(f.expected), submitted \(f.actual)").foregroundStyle(.red) }
+                    }
+                    if let score = game.history.last(where: { $0.kind == "submit" })?.result.score, !score.correct, !game.finished {
+                        Button("Ask for a hint") { Task { await game.send("hint", token: token) } }.foregroundStyle(.red).padding(10).overlay(RoundedRectangle(cornerRadius: 10).stroke(.red)).disabled(!game.editable)
+                    }
+                    if game.showingHint { reference }
+                    if (game.result?.submissions ?? 0) > 0, !game.finished {
+                        Button("Finish & share results") { Task { await game.send("finish", token: token) } }.buttonStyle(.borderedProminent).disabled(!game.editable || !matchesLastSubmission)
+                        if !matchesLastSubmission { Text("Check the current tray before finishing.").font(.caption) }
+                    }
+                    if game.finished { Notice(text: "Results saved for clinician review. This challenge is now read-only.") }
+                    Text("Submissions: \(game.result?.submissions ?? 0) · Hints requested: \(game.result?.hints ?? 0)")
+                    Text("Pill icons are illustrative. Quantities and day periods are scored; food instructions are displayed. These results support clinician review.").font(.caption).foregroundStyle(.secondary)
+                }
+            }
+            if let notice = game.notice { Notice(text: notice, color: .red) }
+            if game.pending != nil { Button("Retry pending action") { Task { await game.send("start", token: token) } }.disabled(game.busy || !game.accessValid) }
+            Button("Refresh challenge") { Task { await game.load(token: token) } }.disabled(game.busy)
+            if game.busy { ProgressView("Saving securely…") }
+        }.padding().navigationTitle("Medication day")
+            .task { await game.load(token: token) }
+            .onChange(of: scenePhase) { _, phase in
+                if phase == .active { Task { await game.load(token: token) } } else { game.invalidate() }
+            }
+    }
+    private var matchesLastSubmission: Bool {
+        guard let last = game.history.last(where: { $0.kind == "submit" }), let saved = try? Tray.fromWire(last.payload) else { return false }
+        // Compare canonical counts, since Tray can retain zero entries after removal.
+        return saved.wireCounts(medications: meds) == game.tray.wireCounts(medications: meds)
+    }
+    private var reference: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            ForEach(meds) { m in
+                Text("\(m.code) · \(m.name): \(m.quantity ?? 0) tablet(s) in \(DayPeriod.allCases.filter { m.periods.contains($0) }.map(\.title).joined(separator: ", ")). \(m.directions)")
+            }
+        }.padding().background(.teal.opacity(0.1), in: RoundedRectangle(cornerRadius: 12))
+    }
+    private func compartment(_ period: DayPeriod) -> some View {
+        VStack {
+            Button { active = period } label: { Label(period.title, systemImage: period.symbol) }.buttonStyle(.bordered).tint(active == period ? .teal : .secondary).disabled(!game.editable)
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 48))]) {
+                ForEach(meds) { m in
+                    ForEach(0..<game.tray.count(m.id, at: period), id: \.self) { i in
+                        let expected = m.periods.contains(period) ? (m.quantity ?? 0) : 0
+                        Button { game.tray.remove(m.id, at: period); game.edited() } label: { PillIcon(code: m.code, error: game.showingFeedback && i >= expected) }.disabled(!game.editable)
+                            .accessibilityLabel("Remove one \(m.name) from \(period.title)")
+                    }
+                }
+            }
+            Spacer(minLength: 40)
+        }.padding(10).frame(minHeight: 180).frame(maxWidth: .infinity).background(.background, in: RoundedRectangle(cornerRadius: 16))
+            .overlay(RoundedRectangle(cornerRadius: 16).stroke(active == period ? Color.teal : Color.gray))
+            .dropDestination(for: String.self) { items, _ in
+                guard game.editable, items.count == 1, let id = UUID(uuidString: items[0]), meds.contains(where: { $0.id == id }) else { return false }
+                game.tray.add(id, at: period); active = period; game.edited(); return true
+            }
+    }
+}

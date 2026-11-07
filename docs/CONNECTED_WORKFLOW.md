@@ -36,3 +36,7 @@ The prepared SQL bundle matched SHA-256 `9bd15fc2eca532eb207b25bdf6f05a05ea2dd62
 Thirteen live API checks passed using the real Auth gateway and an unpaired temporary identity. These verified anonymous sign-in, empty access to six protected tables, an empty patient inbox, denial of clinician access requests/admission creation/pairing issuance, rejection of an unknown pairing code, and safe ending of an unpaired session. The temporary Auth session was signed out; its unbound Auth user record remains for normal future cleanup. No patient admission, medication order or staff privilege was created. Tokens were kept only in process memory and were not logged or committed.
 
 End-to-end valid pairing and clinician operations remain untested against live provisioned staff. Initial administrator/clinician provisioning and scopes remain pending, along with the separately deferred staff email delivery setup. This activation does not implement remote assessment submissions or server scoring.
+
+## 7 November — connected game and audit evidence
+
+Patient game actions, central scoring and clinician evidence/review screens are implemented. See [assessment evidence](ASSESSMENT_EVIDENCE.md) for scoring definitions, security boundaries, validation and deployment status. Migration 004 remains pending live activation; existing clinical/pairing APIs are unchanged.

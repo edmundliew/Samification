@@ -1,0 +1,305 @@
+[
+  {
+    "name": "empty",
+    "medications": [
+      {
+        "id": "00000000-0000-4000-8000-000000000020",
+        "code": "A",
+        "name": "Fictional A",
+        "originalName": "Fictional A",
+        "doseMG": 20,
+        "strengthMG": 10,
+        "periods": [
+          "morning",
+          "bedtime"
+        ],
+        "included": true,
+        "confirmed": true
+      },
+      {
+        "id": "abcdefab-0000-4000-8000-000000000021",
+        "code": "B",
+        "name": "Fictional B",
+        "originalName": "Fictional B",
+        "doseMG": 5,
+        "strengthMG": 5,
+        "periods": [
+          "afternoon"
+        ],
+        "included": true,
+        "confirmed": true
+      }
+    ],
+    "tray": {},
+    "expected": {
+      "expectedAdministrations": 3,
+      "exactQuantities": 0,
+      "presentAdministrations": 0,
+      "unexpectedPlacements": 0,
+      "omissions": 3,
+      "extraTablets": 0,
+      "missingTablets": 5
+    }
+  },
+  {
+    "name": "exact",
+    "medications": [
+      {
+        "id": "00000000-0000-4000-8000-000000000020",
+        "code": "A",
+        "name": "Fictional A",
+        "originalName": "Fictional A",
+        "doseMG": 20,
+        "strengthMG": 10,
+        "periods": [
+          "morning",
+          "bedtime"
+        ],
+        "included": true,
+        "confirmed": true
+      },
+      {
+        "id": "abcdefab-0000-4000-8000-000000000021",
+        "code": "B",
+        "name": "Fictional B",
+        "originalName": "Fictional B",
+        "doseMG": 5,
+        "strengthMG": 5,
+        "periods": [
+          "afternoon"
+        ],
+        "included": true,
+        "confirmed": true
+      }
+    ],
+    "tray": {
+      "morning": {
+        "00000000-0000-4000-8000-000000000020": 2
+      },
+      "bedtime": {
+        "00000000-0000-4000-8000-000000000020": 2
+      },
+      "afternoon": {
+        "abcdefab-0000-4000-8000-000000000021": 1
+      }
+    },
+    "expected": {
+      "expectedAdministrations": 3,
+      "exactQuantities": 3,
+      "presentAdministrations": 3,
+      "unexpectedPlacements": 0,
+      "omissions": 0,
+      "extraTablets": 0,
+      "missingTablets": 0
+    }
+  },
+  {
+    "name": "too few",
+    "medications": [
+      {
+        "id": "00000000-0000-4000-8000-000000000020",
+        "code": "A",
+        "name": "Fictional A",
+        "originalName": "Fictional A",
+        "doseMG": 20,
+        "strengthMG": 10,
+        "periods": [
+          "morning",
+          "bedtime"
+        ],
+        "included": true,
+        "confirmed": true
+      },
+      {
+        "id": "abcdefab-0000-4000-8000-000000000021",
+        "code": "B",
+        "name": "Fictional B",
+        "originalName": "Fictional B",
+        "doseMG": 5,
+        "strengthMG": 5,
+        "periods": [
+          "afternoon"
+        ],
+        "included": true,
+        "confirmed": true
+      }
+    ],
+    "tray": {
+      "morning": {
+        "00000000-0000-4000-8000-000000000020": 1
+      },
+      "bedtime": {
+        "00000000-0000-4000-8000-000000000020": 2
+      },
+      "afternoon": {
+        "abcdefab-0000-4000-8000-000000000021": 1
+      }
+    },
+    "expected": {
+      "expectedAdministrations": 3,
+      "exactQuantities": 2,
+      "presentAdministrations": 3,
+      "unexpectedPlacements": 0,
+      "omissions": 0,
+      "extraTablets": 0,
+      "missingTablets": 1
+    }
+  },
+  {
+    "name": "too many",
+    "medications": [
+      {
+        "id": "00000000-0000-4000-8000-000000000020",
+        "code": "A",
+        "name": "Fictional A",
+        "originalName": "Fictional A",
+        "doseMG": 20,
+        "strengthMG": 10,
+        "periods": [
+          "morning",
+          "bedtime"
+        ],
+        "included": true,
+        "confirmed": true
+      },
+      {
+        "id": "abcdefab-0000-4000-8000-000000000021",
+        "code": "B",
+        "name": "Fictional B",
+        "originalName": "Fictional B",
+        "doseMG": 5,
+        "strengthMG": 5,
+        "periods": [
+          "afternoon"
+        ],
+        "included": true,
+        "confirmed": true
+      }
+    ],
+    "tray": {
+      "morning": {
+        "00000000-0000-4000-8000-000000000020": 3
+      },
+      "bedtime": {
+        "00000000-0000-4000-8000-000000000020": 2
+      },
+      "afternoon": {
+        "abcdefab-0000-4000-8000-000000000021": 1
+      }
+    },
+    "expected": {
+      "expectedAdministrations": 3,
+      "exactQuantities": 2,
+      "presentAdministrations": 3,
+      "unexpectedPlacements": 0,
+      "omissions": 0,
+      "extraTablets": 1,
+      "missingTablets": 0
+    }
+  },
+  {
+    "name": "wrong time",
+    "medications": [
+      {
+        "id": "00000000-0000-4000-8000-000000000020",
+        "code": "A",
+        "name": "Fictional A",
+        "originalName": "Fictional A",
+        "doseMG": 20,
+        "strengthMG": 10,
+        "periods": [
+          "morning",
+          "bedtime"
+        ],
+        "included": true,
+        "confirmed": true
+      },
+      {
+        "id": "abcdefab-0000-4000-8000-000000000021",
+        "code": "B",
+        "name": "Fictional B",
+        "originalName": "Fictional B",
+        "doseMG": 5,
+        "strengthMG": 5,
+        "periods": [
+          "afternoon"
+        ],
+        "included": true,
+        "confirmed": true
+      }
+    ],
+    "tray": {
+      "evening": {
+        "00000000-0000-4000-8000-000000000020": 2
+      },
+      "bedtime": {
+        "00000000-0000-4000-8000-000000000020": 2
+      },
+      "afternoon": {
+        "abcdefab-0000-4000-8000-000000000021": 1
+      }
+    },
+    "expected": {
+      "expectedAdministrations": 3,
+      "exactQuantities": 2,
+      "presentAdministrations": 2,
+      "unexpectedPlacements": 1,
+      "omissions": 1,
+      "extraTablets": 2,
+      "missingTablets": 2
+    }
+  },
+  {
+    "name": "all expected plus extra",
+    "medications": [
+      {
+        "id": "00000000-0000-4000-8000-000000000020",
+        "code": "A",
+        "name": "Fictional A",
+        "originalName": "Fictional A",
+        "doseMG": 20,
+        "strengthMG": 10,
+        "periods": [
+          "morning",
+          "bedtime"
+        ],
+        "included": true,
+        "confirmed": true
+      },
+      {
+        "id": "abcdefab-0000-4000-8000-000000000021",
+        "code": "B",
+        "name": "Fictional B",
+        "originalName": "Fictional B",
+        "doseMG": 5,
+        "strengthMG": 5,
+        "periods": [
+          "afternoon"
+        ],
+        "included": true,
+        "confirmed": true
+      }
+    ],
+    "tray": {
+      "morning": {
+        "00000000-0000-4000-8000-000000000020": 2,
+        "abcdefab-0000-4000-8000-000000000021": 1
+      },
+      "bedtime": {
+        "00000000-0000-4000-8000-000000000020": 2
+      },
+      "afternoon": {
+        "abcdefab-0000-4000-8000-000000000021": 1
+      }
+    },
+    "expected": {
+      "expectedAdministrations": 3,
+      "exactQuantities": 3,
+      "presentAdministrations": 3,
+      "unexpectedPlacements": 1,
+      "omissions": 0,
+      "extraTablets": 1,
+      "missingTablets": 0
+    }
+  }
+]

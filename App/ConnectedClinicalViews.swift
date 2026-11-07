@@ -82,7 +82,7 @@ import UniformTypeIdentifiers
             _ = try await client.assignChallenge(admissionID: admissionID, regimenID: regimen.id, practice: self.practice, assignmentID: self.pendingAssignmentID, token: token)
             self.assignments = try await client.assignments(admissionID: admissionID, token: token)
             self.pendingRegimenID = nil
-            account.notice = "Challenge assignment saved. Patient pairing is the next connection step."
+            account.notice = "Challenge assignment saved. Pair a patient device to begin."
         }
     }
 }
@@ -96,7 +96,7 @@ struct ConnectedClinicalView: View {
     var body: some View {
         @Bindable var records = records
         List {
-            Section { Notice(text: "Connected development workflow. Use fictional admission aliases and medication data only. Patient pairing and centrally scored results are still being built.", color: .orange) }
+            Section { Notice(text: "Connected development workflow. Use fictional admission aliases and medication data only. Patient pairing and server-scored evidence require the assessment backend migration.", color: .orange) }
             Section("Create admission") {
                 Picker("Ward", selection: $records.selectedScope) {
                     Text("Select a ward").tag(Optional<UUID>.none)
@@ -159,6 +159,9 @@ struct ConnectedAdmissionView: View {
                 Section("Patient access") {
                     NavigationLink("Pair a patient device") { ClinicianPairingView(admission: admission, account: account) }
                 }
+            }
+            Section("Patient results") {
+                NavigationLink("Review challenge evidence") { ConnectedResultsView(admission: admission, account: account) }
             }
             Section("Confirmed regimen history") {
                 ForEach(records.regimens) { regimen in

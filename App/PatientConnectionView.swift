@@ -6,6 +6,10 @@ import Observation
     var session: StaffSession?
     var paired = false
     var inbox: [PatientInboxEntry] = []
+    var games: [UUID: ConnectedGameStore] = [:]
+    func game(for entry: PatientInboxEntry) -> ConnectedGameStore {
+        if let game = games[entry.id] { return game }; let game = ConnectedGameStore(entry: entry); games[entry.id] = game; return game
+    }
     var expiration: String?
     var busy = false
     var notice: String?
@@ -16,7 +20,7 @@ import Observation
         busy = true; notice = nil; defer { busy = false }
         do { try await action(client) }
         catch {
-            if case StaffAPIError.authentication = error { session = nil; paired = false; inbox = []; expiration = nil }
+            if case StaffAPIError.authentication = error { session = nil; paired = false; inbox = []; games = [:]; expiration = nil }
             notice = (error as? StaffAPIError)?.localizedDescription ?? error.localizedDescription
         }
     }
@@ -46,7 +50,7 @@ import Observation
         await perform { client in
             guard let token = self.session?.access_token else { return }
             try await client.endPatientSession(token: token)
-            self.session = nil; self.paired = false; self.inbox = []; self.expiration = nil; self.code = ""
+            self.session = nil; self.paired = false; self.inbox = []; self.games = [:]; self.expiration = nil; self.code = ""
             try await client.signOut(token: token)
         }
     }
@@ -72,14 +76,10 @@ struct PatientConnectionView: View {
                     ForEach(connection.inbox) { entry in
                         DisclosureGroup("\(entry.patient_alias) · regimen v\(entry.regimen_version)") {
                             Text(entry.practice ? "Practice" : "Assessment").font(.caption)
-                            ForEach(entry.medications) { m in
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text("\(m.code) · \(m.name)").font(.headline)
-                                    Text("\(m.doseMG.formatted()) mg · strength \(m.strengthMG.formatted()) mg/tablet")
-                                    Text(DayPeriod.allCases.filter { m.periods.contains($0) }.map(\.title).joined(separator: ", "))
-                                    if !m.directions.isEmpty { Text(m.directions) }
-                                }.padding(.vertical, 4)
+                            if let token = connection.session?.access_token {
+                                NavigationLink("Open medication challenge") { ConnectedGameView(game: connection.game(for: entry), token: token) }
                             }
+                            Text("\(entry.medications.count) medicines. Open the challenge to request your medication reference.").font(.caption)
                         }
                     }
                 }
@@ -95,7 +95,7 @@ struct PatientConnectionView: View {
         }.disabled(connection.busy).navigationTitle("Patient connection")
             .onChange(of: scenePhase) { _, phase in
                 if phase == .active && connection.paired { Task { await connection.refresh() } }
-                else if phase != .active { connection.inbox = []; connection.expiration = nil }
+                else if phase != .active { connection.inbox = []; connection.expiration = nil; connection.games.values.forEach { $0.invalidate() } }
             }
     }
 }

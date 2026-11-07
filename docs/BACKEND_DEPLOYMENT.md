@@ -31,3 +31,7 @@ Following separate explicit approval, deployed migrations 002 and 003 in one ato
 Enabled **Allow anonymous sign-ins** and saved it in Supabase Auth. Email confirmation remains enabled; manual identity linking remains disabled. No email service, paid plan or administrator grant was changed.
 
 Six live schema/grant checks and 13 real Auth/API checks passed. One temporary unpaired Auth identity was created for verification and signed out; the user record was not permanently deleted. No clinical records were created. See `docs/CONNECTED_WORKFLOW.md` for the verified cases and remaining end-to-end limits. These migrations were executed manually through SQL Editor and still require migration-history reconciliation before future CLI-managed deployment.
+
+## Prepared 7 November 2026: assessment evidence migration 004
+
+`202611070004_assessment_evidence.sql` adds three RLS-protected evidence/review tables and narrow patient action/history and clinician review RPCs. It does not seed identities, memberships or patient records. Application roles have no direct writes. Locally tested against all preceding migrations; **not yet run in the live project**. See `ASSESSMENT_EVIDENCE.md` for the test evidence and rollout limits.

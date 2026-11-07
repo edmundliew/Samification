@@ -55,3 +55,7 @@ Package photos were supplied by the project owner for the demo. They are not ver
 Twenty-eight Swift tests and 112 isolated PostgreSQL checks pass (26 staff access + 53 clinical workflow + 33 patient pairing). The staff migration's five live schema/grant checks also passed. See [staff access](docs/STAFF_ACCESS.md), [deployment record](docs/BACKEND_DEPLOYMENT.md) and [current workflow](docs/CORE_WORKFLOW.md). Email sender configuration is a backend setting, independent of role approval and the recipient’s email domain; see [email configuration boundary](docs/EMAIL_CONFIGURATION.md).
 
 See [connected workflow and pairing validation](docs/CONNECTED_WORKFLOW.md) for the latest development checkpoint.
+
+### Connected assessment development
+
+The development branch now includes server-scored patient challenges, immutable submission history and scoped clinician reviews. See [assessment evidence](docs/ASSESSMENT_EVIDENCE.md). Migration 004 is tested locally and awaits live activation; this is not yet a TestFlight release.
