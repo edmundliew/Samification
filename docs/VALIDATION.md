@@ -1,3 +1,11 @@
+# Two-column tablets within each compartment — 8 November 2026
+
+Kept the four time compartments across one row. Within each compartment, both games now use exactly two flexible tablet columns, so four tablets form a 2×2 group and additional tablets continue into further two-column rows. Compact lettered pill badges fit the narrow iPhone compartments. Their removal buttons retain a 44-point minimum height and full cell hit area. Medication names remain in accessibility labels; incorrect badges retain red styling. No tablet count is hidden or capped by this layout.
+
+Xcode built and launched the changed views on iPhone 17e / iOS 27.2. Verified an existing five-tablet tray flowed into two columns, tapped one tablet to remove it and visually confirmed the remaining four formed a 2×2 group. Source parsing and whitespace checks passed. The connected view shares this grid configuration but was not tested with live authentication. Larger accessibility fonts, iPad and smaller iPhones still need visual checks. Scoring and transport are unchanged.
+
+---
+
 # Shared tray action row — 8 November 2026
 
 Both local and connected games use the same action row: a smaller Clear all button on the left and Check my daily tray centred on the page. Equal side widths preserve the primary action’s centre alignment. Existing disabled states and clear/submit handlers are retained; clearing does not reset assessment history. Only layout and shared UI composition changed. Source parsing and whitespace checks passed. Xcode built and launched the changed views on iPhone 17e; the final portrait preview confirmed a one-line Clear all label on the left and a centred Check button on the same row. Tapping Clear all emptied the working tray, left submissions/hints at zero and disabled Clear all while empty. Larger text and smaller screen widths still need visual checks.

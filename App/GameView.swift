@@ -185,9 +185,13 @@ struct MedicationBag: View {
 struct PillIcon: View {
     let code: String
     var error = false
+    var compact = false
     var body: some View {
-        Text(error ? "\(code) ×" : code).font(.headline).foregroundStyle(error ? Color.red : Color.primary)
-            .frame(minWidth: 44, minHeight: 34).padding(.horizontal, 4)
+        Text(error && !compact ? "\(code) ×" : code)
+            .font(compact ? .caption.weight(.semibold) : .headline)
+            .foregroundStyle(error ? Color.red : Color.primary)
+            .frame(minWidth: compact ? 18 : 44, minHeight: compact ? 26 : 34)
+            .padding(.horizontal, compact ? 3 : 4)
             .background(error ? Color.red.opacity(0.15) : Color.teal.opacity(0.15), in: Capsule())
             .overlay(Capsule().stroke(error ? Color.red : Color.teal.opacity(0.35)))
     }
@@ -212,12 +216,12 @@ struct FlowPills: View {
     var body: some View {
         let total = challenge.medications.reduce(0) { $0 + challenge.tray.count($1.id, at: period) }
         if total == 0 { Text("Drop here").font(.subheadline).foregroundStyle(.secondary).frame(maxWidth: .infinity, minHeight: 70) }
-        LazyVGrid(columns: [GridItem(.adaptive(minimum: 48))], spacing: 10) {
+        LazyVGrid(columns: Array(repeating: GridItem(.flexible(minimum: 0)), count: 2), spacing: 4) {
             ForEach(TrayTablet.items(challenge.medications, tray: challenge.tray, period: period)) { tablet in
                 let m = tablet.medication
                 let index = tablet.index
                 let expected = m.periods.contains(period) ? (m.quantity ?? 0) : 0
-                Button { remove(m.id) } label: { PillIcon(code: m.code, error: assessed && index >= expected).frame(minHeight: 44) }
+                Button { remove(m.id) } label: { PillIcon(code: m.code, error: assessed && index >= expected, compact: true).frame(maxWidth: .infinity, minHeight: 44).contentShape(Rectangle()) }
                     .buttonStyle(.plain).disabled(challenge.locked)
                     .accessibilityLabel("Remove one \(m.name) tablet from \(period.title)")
             }

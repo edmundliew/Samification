@@ -137,12 +137,12 @@ struct ConnectedGameView: View {
     private func compartment(_ period: DayPeriod) -> some View {
         VStack {
             Button { active = period } label: { TrayPeriodLabel(period: period) }.buttonStyle(.plain).padding(.vertical, 4).frame(maxWidth: .infinity).background(active == period ? Color.teal.opacity(0.15) : Color.secondary.opacity(0.08), in: RoundedRectangle(cornerRadius: 10)).tint(active == period ? .teal : .secondary).disabled(!game.editable)
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 48))]) {
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(minimum: 0)), count: 2), spacing: 4) {
                 ForEach(TrayTablet.items(meds, tray: game.tray, period: period)) { tablet in
                     let m = tablet.medication
                     let i = tablet.index
                     let expected = m.periods.contains(period) ? (m.quantity ?? 0) : 0
-                    Button { game.tray.remove(m.id, at: period); game.edited() } label: { PillIcon(code: m.code, error: game.showingFeedback && i >= expected) }.disabled(!game.editable)
+                    Button { game.tray.remove(m.id, at: period); game.edited() } label: { PillIcon(code: m.code, error: game.showingFeedback && i >= expected, compact: true).frame(maxWidth: .infinity, minHeight: 44).contentShape(Rectangle()) }.disabled(!game.editable)
                         .accessibilityLabel("Remove one \(m.name) from \(period.title)")
                 }
             }
