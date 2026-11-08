@@ -1,3 +1,13 @@
+# Simplified staff authentication — 8 November 2026
+
+Implemented standard email/password sign-in as the primary Account screen and initial app tab. First-time account/password setup and recovery are in a collapsed secondary flow. Added authenticated password updates, device-only Keychain session persistence, refresh-token renewal, user-ID matching on restore, foreground/periodic refresh and local credential clearing on sign-out or invalid session. Roles remain server-authorized.
+
+**48 core tests passed**, including five new checks for password grants without email/role fields, refresh grants and rotated-token decoding, authenticated password updates with minimum length, safe Auth error classification and local rejection of empty credentials. Native Xcode build/launch succeeded on iPhone 17e. Observed the simple email/password form with disabled empty submission. Submitted deliberately fictional credentials to the live Auth endpoint; the app cleared the password field and displayed the expected incorrect-credentials message. No real password or session credential was read, logged or committed. A fresh one-time verification email request for the owner was accepted by Supabase; its delivery and the credential step remain pending. No security settings, roles or production email configuration were changed.
+
+Successful live sign-in, Keychain save/rotation/restoration, sign-out and the complete connected clinician/patient UI journey remain unverified until the owner completes password setup. SMTP and direct email-to-app redirects remain unresolved for onboarding/recovery. The final keyboard-submit/help-copy adjustments were source-checked after the running native build.
+
+---
+
 # Two-column tablets within each compartment — 8 November 2026
 
 Kept the four time compartments across one row. Within each compartment, both games now use exactly two flexible tablet columns, so four tablets form a 2×2 group and additional tablets continue into further two-column rows. Compact lettered pill badges fit the narrow iPhone compartments. Their removal buttons retain a 44-point minimum height and full cell hit area. Medication names remain in accessibility labels; incorrect badges retain red styling. No tablet count is hidden or capped by this layout.

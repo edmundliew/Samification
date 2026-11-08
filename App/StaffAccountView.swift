@@ -1,9 +1,45 @@
 import SwiftUI
 import UIKit
 import Observation
+import Security
+
+private enum StaffSessionVault {
+    private static var query: [String: Any] {
+        [kSecClass as String: kSecClassGenericPassword,
+         kSecAttrService as String: "com.edmundliew.samification.staff-session.v1",
+         kSecAttrAccount as String: "current-staff"]
+    }
+    static func save(_ session: StaffSession) throws {
+        guard session.refresh_token?.isEmpty == false else { throw VaultError.unavailable }
+        let values: [String: Any] = [kSecValueData as String: try JSONEncoder().encode(session),
+                                    kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlockedThisDeviceOnly]
+        let status = SecItemUpdate(query as CFDictionary, values as CFDictionary)
+        if status == errSecItemNotFound {
+            guard SecItemAdd(query.merging(values) { _, new in new } as CFDictionary, nil) == errSecSuccess else { throw VaultError.unavailable }
+        } else if status != errSecSuccess { throw VaultError.unavailable }
+    }
+    static func load() throws -> StaffSession? {
+        let lookup = query.merging([kSecReturnData as String: true, kSecMatchLimit as String: kSecMatchLimitOne]) { _, new in new }
+        var item: CFTypeRef?
+        let status = SecItemCopyMatching(lookup as CFDictionary, &item)
+        if status == errSecItemNotFound { return nil }
+        guard status == errSecSuccess, let data = item as? Data else { throw VaultError.unavailable }
+        return try JSONDecoder().decode(StaffSession.self, from: data)
+    }
+    static func remove() { SecItemDelete(query as CFDictionary) }
+    enum VaultError: Error, LocalizedError {
+        case unavailable
+        var errorDescription: String? { "Unable to access saved sign-in on this device. Unlock the device and try again." }
+    }
+}
 
 @MainActor @Observable final class StaffAccountStore {
     var email = ""
+    var password = ""
+    var newPassword = ""
+    var confirmPassword = ""
+    var restoreFailed = false
+    private var restorationAttempted = false
     var code = ""
     var emailLink = ""
     var name = ""
@@ -29,8 +65,51 @@ import Observation
         do { try await action(client) }
         catch {
             if case StaffAPIError.authentication = error { clearSession() }
-            notice = (error as? StaffAPIError)?.localizedDescription ?? (error as? StaffAuthError)?.localizedDescription ?? "Unable to read the service response. Please try again."
+            if case StaffAuthError.invalidRefresh = error { clearSession() }
+            notice = (error as? StaffAPIError)?.localizedDescription ?? (error as? StaffAuthError)?.localizedDescription ?? (error as? StaffSessionVault.VaultError)?.localizedDescription ?? "Unable to read the service response. Please try again."
             failed = true
+        }
+    }
+    private func accept(_ value: StaffSession, client: StaffAccessClient) async throws {
+        try StaffSessionVault.save(value)
+        session = value; password = ""; code = ""; emailLink = ""
+        try await load(client)
+    }
+    func signInWithPassword() async {
+        guard emailValid, !password.isEmpty else { return }
+        let enteredPassword = password; password = ""
+        await perform { client in
+            let value = try await client.signInWithPassword(email: self.email, password: enteredPassword)
+            try await self.accept(value, client: client)
+        }
+    }
+    func restore(force: Bool = false) async {
+        guard !restorationAttempted || force else { return }
+        restorationAttempted = true
+        await renew()
+    }
+    func renew() async {
+        guard !busy else { return }
+        do {
+            guard let saved = try StaffSessionVault.load(), let refresh = saved.refresh_token else { return }
+            await perform { client in
+                let value = try await client.refreshSession(refreshToken: refresh)
+                guard value.user.id == saved.user.id else {
+                    try? await client.signOut(token: value.access_token)
+                    self.clearSession(); throw StaffAPIError.authentication
+                }
+                try await self.accept(value, client: client)
+                self.restoreFailed = false
+            }
+            restoreFailed = failed && session == nil
+        } catch { restoreFailed = true; failed = true; notice = "Unable to restore saved sign-in. Unlock the device and try again." }
+    }
+    func savePassword() async {
+        guard let token = session?.access_token, newPassword == confirmPassword, newPassword.count >= 12 else { return }
+        let value = newPassword; newPassword = ""; confirmPassword = ""
+        await perform { client in
+            try await client.setPassword(value, token: token)
+            self.notice = "Password saved. Next time, sign in with your email and password."
         }
     }
     func sendCode() async {
@@ -38,15 +117,15 @@ import Observation
         await perform { client in
             try await client.sendCode(email: self.email)
             self.codeSent = true
-            self.notice = "Check your email. Copy the sign-in link without opening it, then paste it below. If your email contains a code, you can use that instead."
+            self.notice = "Check your email to verify your account, then set a password. This one-time step still requires email delivery."
         }
     }
     func signIn() async {
         guard StaffAccessClient.validEmailCode(code) else { notice = "Enter the numeric code from your email, not the words on its button."; failed = true; return }
         await perform { client in
-            self.session = try await client.verifyCode(email: self.email, code: self.code.trimmingCharacters(in: .whitespacesAndNewlines))
-            self.code = ""
-            try await self.load(client)
+            let value = try await client.verifyCode(email: self.email, code: self.code.trimmingCharacters(in: .whitespacesAndNewlines))
+            try await self.accept(value, client: client)
+            self.notice = "Email verified. Open Password settings below to set your Samification password."
         }
     }
     func pasteEmailLink() {
@@ -65,10 +144,9 @@ import Observation
         guard StaffAccessClient.validEmailLink(emailLink) else { notice = "Copy the actual link address from the email button, not its words. Use the original, unopened Supabase sign-in link."; failed = true; return }
         let link = emailLink; emailLink = ""
         await perform { client in
-            self.session = try await client.verifyEmailLink(link, expectedEmail: self.email)
-            self.code = ""
-            try await self.load(client)
-            self.notice = "Signed in successfully. Your approved access is shown below."
+            let value = try await client.verifyEmailLink(link, expectedEmail: self.email)
+            try await self.accept(value, client: client)
+            self.notice = "Email verified. Open Password settings below to set your Samification password."
         }
     }
     func refresh() async { await perform { try await self.load($0) } }
@@ -110,12 +188,13 @@ import Observation
             try await client.signOut(token: token)
         }
     }
-    private func clearSession() { session = nil; memberships = []; scopes = []; requests = []; code = ""; emailLink = ""; codeSent = false; reason = ""; name = "" }
+    private func clearSession() { StaffSessionVault.remove(); password = ""; newPassword = ""; confirmPassword = ""; restoreFailed = false; session = nil; memberships = []; scopes = []; requests = []; code = ""; emailLink = ""; codeSent = false; reason = ""; name = "" }
     func scopeName(_ id: UUID?) -> String { scopes.first { $0.id == id }?.name ?? "Unknown scope" }
 }
 
 struct StaffAccountView: View {
     @State private var account = StaffAccountStore()
+    @Environment(\.scenePhase) private var scenePhase
     var body: some View {
         @Bindable var account = account
         Form {
@@ -130,7 +209,15 @@ struct StaffAccountView: View {
                     Text(session.user.email ?? "Staff account")
                     Button("Refresh access") { Task { await account.refresh() } }
                     Button("Sign out", role: .destructive) { Task { await account.signOut() } }
-                    Text("This development build keeps your session in memory. Reopening the app requires sign-in.").font(.caption)
+                    Text("Sign-in is saved securely on this device. Your password is never saved by the app.").font(.caption)
+                }
+                Section {
+                  DisclosureGroup("Password settings") {
+                    SecureField("New password · at least 12 characters", text: $account.newPassword).textContentType(.newPassword)
+                    SecureField("Confirm new password", text: $account.confirmPassword).textContentType(.newPassword)
+                    Button("Save password") { Task { await account.savePassword() } }
+                        .disabled(account.newPassword.count < 12 || account.newPassword != account.confirmPassword)
+                  }
                 }
                 Section("Your access") {
                     let own = account.memberships.filter { $0.user_id == session.user.id }
@@ -189,31 +276,48 @@ struct StaffAccountView: View {
                     }
                 }
             } else {
-                Section("Staff sign-in") {
-                    TextField("Email address", text: $account.email).textContentType(.emailAddress).textInputAutocapitalization(.never).autocorrectionDisabled().disabled(account.codeSent)
-                    if account.emailValid {
-                        Button("Paste email link", systemImage: "doc.on.clipboard") { account.pasteEmailLink() }
-                        SecureField("Paste original sign-in link", text: $account.emailLink).textInputAutocapitalization(.never).autocorrectionDisabled().privacySensitive()
-                        Button("Verify link & sign in") { Task { await account.signInWithLink() } }.disabled(!StaffAccessClient.validEmailLink(account.emailLink))
-                        if !account.emailLink.isEmpty && !StaffAccessClient.validEmailLink(account.emailLink) {
-                            Text("No sign-in address was found. Right-click the email button → Copy Link Address, then use Paste email link.").font(.caption).foregroundStyle(.red)
-                        }
-                        Text("Right-click the email button → Copy Link Address. Paste the address here without opening it in a browser.").font(.caption)
-                        DisclosureGroup("Have a numeric email code instead?") {
-                            TextField("Numeric email code", text: $account.code).textContentType(.oneTimeCode).keyboardType(.numberPad).autocorrectionDisabled()
-                            Button("Verify numeric code") { Task { await account.signIn() } }.disabled(!StaffAccessClient.validEmailCode(account.code))
-                        }
-                        if let notice = account.notice { Notice(text: notice, color: account.failed ? .red : .teal) }
-                        if account.busy { ProgressView("Verifying with Supabase…") }
-                        Button("Use another email") { account.codeSent = false; account.code = ""; account.emailLink = "" }
-                    }
-                    Button(account.codeSent ? "Send another sign-in email" : "Send sign-in email") { Task { await account.sendCode() } }.disabled(!account.emailValid)
-                    Text("Signing in creates an authentication account if needed. It does not grant a staff role.").font(.caption)
+                Section("Sign in") {
+                    TextField("Email address", text: $account.email).textContentType(.username).keyboardType(.emailAddress).textInputAutocapitalization(.never).autocorrectionDisabled()
+                    SecureField("Password", text: $account.password).textContentType(.password).submitLabel(.go)
+                        .onSubmit { Task { await account.signInWithPassword() } }
+                    Button("Sign in") { Task { await account.signInWithPassword() } }.buttonStyle(.borderedProminent)
+                        .disabled(!account.emailValid || account.password.isEmpty)
+                    Text("Staff access still requires administrator approval.").font(.caption).foregroundStyle(.secondary)
+                    if account.restoreFailed { Button("Retry saved sign-in") { Task { await account.restore(force: true) } } }
                 }
+                Section {
+                    DisclosureGroup("Set up an account or reset password") {
+                        Text("Verify your email once, then set a password. Returning users can use the Sign in button above.").font(.caption)
+                        Button(account.codeSent ? "Resend verification email" : "Send verification email") { Task { await account.sendCode() } }.disabled(!account.emailValid)
+                        if account.emailValid {
+                            Button("Paste verification link", systemImage: "doc.on.clipboard") { account.pasteEmailLink() }
+                            SecureField("Verification link", text: $account.emailLink).textInputAutocapitalization(.never).autocorrectionDisabled().privacySensitive()
+                            Button("Verify email") { Task { await account.signInWithLink() } }.disabled(!StaffAccessClient.validEmailLink(account.emailLink))
+                            Text("Copy the link address from your email without opening it. Use this only for first-time setup or password recovery.").font(.caption)
+                            DisclosureGroup("Use an email code instead") {
+                                TextField("Email code", text: $account.code).textContentType(.oneTimeCode).keyboardType(.numberPad)
+                                Button("Verify code") { Task { await account.signIn() } }.disabled(!StaffAccessClient.validEmailCode(account.code))
+                            }
+                        }
+                    }
+                }
+                if let notice = account.notice { Section { Notice(text: notice, color: account.failed ? .red : .teal) } }
+
             }
-            if let notice = account.notice, account.session != nil || !account.emailValid { Section { Notice(text: notice, color: account.failed ? .red : .teal) } }
+            if let notice = account.notice, account.session != nil { Section { Notice(text: notice, color: account.failed ? .red : .teal) } }
             if account.busy { ProgressView("Contacting Supabase…") }
         }.disabled(account.busy).navigationTitle("Staff account")
+            .task {
+                await account.restore()
+                while !Task.isCancelled {
+                    do { try await Task.sleep(for: .seconds(300)) } catch { break }
+                    if scenePhase == .active { await account.renew() }
+                }
+            }
+            .onChange(of: scenePhase) { _, phase in
+                if phase == .active { Task { await account.renew() } }
+                else { account.password = ""; account.newPassword = ""; account.confirmPassword = "" }
+            }
     }
     private var reasonValid: Bool { let value = account.reason.trimmingCharacters(in: .whitespacesAndNewlines); return !value.isEmpty && value.count <= 500 }
 }

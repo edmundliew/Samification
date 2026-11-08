@@ -3,9 +3,10 @@ import Foundation
 import FoundationNetworking
 #endif
 
-public struct StaffSession: Decodable, Sendable {
-    public struct User: Decodable, Sendable { public let id: UUID; public let email: String? }
+public struct StaffSession: Codable, Sendable {
+    public struct User: Codable, Sendable { public let id: UUID; public let email: String? }
     public let access_token: String
+    public let refresh_token: String?
     public let user: User
 }
 public struct CareScope: Decodable, Identifiable, Sendable { public let id: UUID; public let name: String; public let active: Bool }
@@ -21,7 +22,7 @@ public enum StaffAPIError: Error, LocalizedError {
     public var errorDescription: String? {
         switch self {
         case .configuration: return "Supabase configuration is missing or invalid."
-        case .authentication: return "Sign in again. Your code or session may have expired."
+        case .authentication: return "Your sign-in has expired. Please sign in again."
         case .forbidden: return "This account does not have permission for that action."
         case .rejected: return "The request was not accepted. Refresh the list and check your details."
         case .unavailable: return "Unable to reach the service. Try again later."
@@ -29,9 +30,13 @@ public enum StaffAPIError: Error, LocalizedError {
     }
 }
 public enum StaffAuthError: Error, LocalizedError {
-    case expiredLink, emailRateLimited, emailDeliveryRestricted, verificationFailed
+    case expiredLink, emailRateLimited, emailDeliveryRestricted, verificationFailed, invalidCredentials, emailUnconfirmed, invalidRefresh, weakPassword
     public var errorDescription: String? {
         switch self {
+        case .invalidCredentials: return "Email or password is incorrect. If you previously used an email link, set up a password first."
+        case .emailUnconfirmed: return "Confirm your email before signing in."
+        case .invalidRefresh: return "Your saved sign-in has expired. Sign in again."
+        case .weakPassword: return "Choose a stronger password with at least 12 characters."
         case .expiredLink: return "This sign-in link is invalid, expired or already used (otp_expired). Use a fresh unopened email link. This is not a staff-permission decision."
         case .emailRateLimited: return "Supabase has reached its email-sending limit (over_email_send_rate_limit). No new email was sent. Wait for the limit to reset or configure the sender service."
         case .emailDeliveryRestricted: return "The current email service cannot send to this address (email_address_not_authorized). Sender configuration is required."
@@ -44,7 +49,7 @@ public protocol StaffHTTPTransport: Sendable {
 }
 extension URLSession: StaffHTTPTransport {}
 
-// Session tokens live in memory only in this development milestone. No token logging or UserDefaults storage.
+// Callers may persist session tokens in the platform Keychain. Never log them or store passwords.
 public struct StaffAccessClient: Sendable {
     private let baseURL: URL
     private let publishableKey: String
@@ -73,6 +78,13 @@ public struct StaffAccessClient: Sendable {
             let detail = (try? JSONSerialization.jsonObject(with: result.0)) as? [String: Any]
             let code = detail?["error_code"] as? String ?? detail?["code"] as? String
             switch code {
+            case "invalid_credentials": throw StaffAuthError.invalidCredentials
+            case "email_not_confirmed": throw StaffAuthError.emailUnconfirmed
+            case "refresh_token_not_found", "refresh_token_already_used", "session_not_found", "session_expired": throw StaffAuthError.invalidRefresh
+            case "invalid_grant":
+                if path.contains("grant_type=refresh_token") { throw StaffAuthError.invalidRefresh }
+                throw StaffAuthError.invalidCredentials
+            case "weak_password": throw StaffAuthError.weakPassword
             case "otp_expired": throw StaffAuthError.expiredLink
             case "over_email_send_rate_limit": throw StaffAuthError.emailRateLimited
             case "email_address_not_authorized": throw StaffAuthError.emailDeliveryRestricted
@@ -87,6 +99,18 @@ public struct StaffAccessClient: Sendable {
         case 400..<500: throw StaffAPIError.rejected
         default: throw StaffAPIError.unavailable
         }
+    }
+    public func signInWithPassword(email: String, password: String) async throws -> StaffSession {
+        guard !password.isEmpty, password.utf8.count <= 4096 else { throw StaffAuthError.invalidCredentials }
+        return try await JSONDecoder().decode(StaffSession.self, from: request("/auth/v1/token?grant_type=password", method: "POST", body: ["email": email.trimmingCharacters(in: .whitespacesAndNewlines), "password": password]))
+    }
+    public func refreshSession(refreshToken: String) async throws -> StaffSession {
+        guard !refreshToken.isEmpty else { throw StaffAuthError.invalidRefresh }
+        return try await JSONDecoder().decode(StaffSession.self, from: request("/auth/v1/token?grant_type=refresh_token", method: "POST", body: ["refresh_token": refreshToken]))
+    }
+    public func setPassword(_ password: String, token: String) async throws {
+        guard password.count >= 12, password.utf8.count <= 4096 else { throw StaffAuthError.weakPassword }
+        _ = try await request("/auth/v1/user", method: "PUT", body: ["password": password], token: token)
     }
     public func sendCode(email: String) async throws {
         _ = try await request("/auth/v1/otp", method: "POST", body: ["email": email, "create_user": true])

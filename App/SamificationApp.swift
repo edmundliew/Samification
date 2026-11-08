@@ -24,7 +24,7 @@ enum DemoRole: String, CaseIterable, Identifiable {
     var message: String?
     var accessRequests = ["Demo nurse · Ward A"]
     var approvedStaff: [String] = []
-    var selectedTab = "assign"
+    var selectedTab = "account"
     var patient: PatientCase { workspace.patients[workspace.selectedIndex] }
     var medications: [Medication] {
         get { patient.draft }

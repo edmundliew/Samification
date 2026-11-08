@@ -169,3 +169,64 @@ extension StaffAccessTests {
         catch StaffAuthError.verificationFailed { XCTAssertFalse(StaffAuthError.verificationFailed.localizedDescription.contains("private server")) }
     }
 }
+
+extension StaffAccessTests {
+    private var passwordSessionFixture: String {
+        "{\"access_token\":\"fictional-access\",\"refresh_token\":\"fictional-rotated-refresh\",\"user\":{\"id\":\"00000000-0000-4000-8000-000000000001\",\"email\":\"fictional@example.invalid\"}}"
+    }
+    func testPasswordLoginDoesNotRequestEmailOrSendRole() async throws {
+        let transport = MockStaffTransport(body: passwordSessionFixture)
+        let client = try StaffAccessClient(url: url, publishableKey: key, transport: transport)
+        let result = try await client.signInWithPassword(email: " fictional@example.invalid ", password: "fictional password only")
+        XCTAssertEqual(result.refresh_token, "fictional-rotated-refresh")
+        let request = await transport.last()!
+        XCTAssertEqual(request.url?.path, "/auth/v1/token")
+        XCTAssertEqual(request.url?.query, "grant_type=password")
+        XCTAssertNil(request.value(forHTTPHeaderField: "Authorization"))
+        let body = try JSONSerialization.jsonObject(with: request.httpBody!) as! [String: String]
+        XCTAssertEqual(Set(body.keys), ["email", "password"])
+        XCTAssertEqual(body["email"], "fictional@example.invalid")
+        XCTAssertEqual(body["password"], "fictional password only")
+    }
+    func testRefreshUsesRefreshGrantAndReturnsRotatedToken() async throws {
+        let transport = MockStaffTransport(body: passwordSessionFixture)
+        let client = try StaffAccessClient(url: url, publishableKey: key, transport: transport)
+        let result = try await client.refreshSession(refreshToken: "fictional-old-refresh")
+        XCTAssertEqual(result.refresh_token, "fictional-rotated-refresh")
+        let request = await transport.last()!
+        XCTAssertEqual(request.url?.query, "grant_type=refresh_token")
+        XCTAssertNil(request.value(forHTTPHeaderField: "Authorization"))
+        let body = try JSONSerialization.jsonObject(with: request.httpBody!) as! [String: String]
+        XCTAssertEqual(body, ["refresh_token": "fictional-old-refresh"])
+        let restored = try JSONDecoder().decode(StaffSession.self, from: JSONEncoder().encode(result))
+        XCTAssertEqual(restored.user.id, result.user.id)
+        XCTAssertEqual(restored.refresh_token, result.refresh_token)
+    }
+    func testPasswordSetupRequiresAuthenticatedUserAndMinimumLength() async throws {
+        let transport = MockStaffTransport(body: "{}")
+        let client = try StaffAccessClient(url: url, publishableKey: key, transport: transport)
+        do { try await client.setPassword("short", token: "fictional-access"); XCTFail("Weak password sent") } catch StaffAuthError.weakPassword {}
+        var request = await transport.last()
+        XCTAssertNil(request)
+        try await client.setPassword("fictional password only", token: "fictional-access")
+        request = await transport.last()
+        XCTAssertEqual(request?.httpMethod, "PUT")
+        XCTAssertEqual(request?.url?.path, "/auth/v1/user")
+        XCTAssertEqual(request?.value(forHTTPHeaderField: "Authorization"), "Bearer fictional-access")
+    }
+    func testPasswordAndRefreshErrorsDoNotBecomePermissionErrors() async throws {
+        for (code, expected) in [("invalid_credentials", "password"), ("email_not_confirmed", "Confirm"), ("refresh_token_not_found", "expired")] {
+            let client = try StaffAccessClient(url: url, publishableKey: key, transport: MockStaffTransport(status: 400, body: "{\"code\":\"\(code)\"}"))
+            do { _ = try await client.signInWithPassword(email: "fictional@example.invalid", password: "fictional password"); XCTFail("Auth failure accepted") }
+            catch let error as StaffAuthError { XCTAssertTrue(error.localizedDescription.contains(expected)) }
+        }
+    }
+    func testEmptyPasswordAndRefreshNeverReachServer() async throws {
+        let transport = MockStaffTransport()
+        let client = try StaffAccessClient(url: url, publishableKey: key, transport: transport)
+        do { _ = try await client.signInWithPassword(email: "fictional@example.invalid", password: ""); XCTFail("Empty password sent") } catch {}
+        do { _ = try await client.refreshSession(refreshToken: ""); XCTFail("Empty refresh sent") } catch {}
+        let request = await transport.last()
+        XCTAssertNil(request)
+    }
+}
