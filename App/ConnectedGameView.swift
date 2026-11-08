@@ -65,15 +65,16 @@ import Observation
 struct ConnectedGameView: View {
     let game: ConnectedGameStore
     let token: String
+    @Environment(DemoStore.self) private var store
     @Environment(\.scenePhase) private var scenePhase
     @State private var active: DayPeriod = .morning
     private var meds: [Medication] { game.entry.gameMedications }
     var body: some View {
         ScrollView {
             if game.accessValid {
-                VStack(alignment: .leading, spacing: 12) {
+                VStack(alignment: .leading, spacing: 8) {
                     Text(game.entry.practice ? "Practice · regimen v\(game.entry.regimen_version)" : "Assessment · regimen v\(game.entry.regimen_version)").font(.headline)
-                    Text("Select a compartment, then tap a pill. Drag into any compartment. Tap a tablet in the tray to remove it.")
+                    Text("Choose a time. Tap or drag a medication image into the tray. Tap a tray tablet to remove it.").font(.subheadline)
                     if game.result?.priorExposure == true { Notice(text: "A previous challenge for this regimen was started. Earlier exposure is recorded.", color: .orange) }
                     Button("Open medication reference") { Task { await game.send("reference", token: token) } }.disabled(!game.editable)
                     if game.showingReference { reference }
@@ -110,6 +111,9 @@ struct ConnectedGameView: View {
             Button("Refresh challenge") { Task { await game.load(token: token) } }.disabled(game.busy)
             if game.busy { ProgressView("Saving securely…") }
         }.padding().navigationTitle("Medication day")
+            .toolbar(.hidden, for: .tabBar)
+            .onAppear { store.gamePresented = true }
+            .onDisappear { store.gamePresented = false }
             .task { await game.load(token: token) }
             .onChange(of: scenePhase) { _, phase in
                 if phase == .active { Task { await game.load(token: token) } } else { game.invalidate() }

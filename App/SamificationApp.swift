@@ -20,6 +20,7 @@ enum DemoRole: String, CaseIterable, Identifiable {
     var persistenceError: String?
     var role: DemoRole = .clinician
     var activeID: UUID?
+    var gamePresented = false
     var message: String?
     var accessRequests = ["Demo nurse · Ward A"]
     var approvedStaff: [String] = []
@@ -100,13 +101,15 @@ struct RootView: View {
     var body: some View {
         @Bindable var store = store
         VStack(spacing: 0) {
-            VStack(alignment: .leading, spacing: 8) {
-                HStack { Label("Samification", systemImage: "pills.fill").font(.headline); Spacer(); Text("v0.2 · Development").font(.caption).foregroundStyle(.secondary) }
-                Picker("Demo role preview", selection: $store.role) { ForEach(DemoRole.allCases) { Text($0.rawValue).tag($0) } }
-                    .pickerStyle(.segmented).onChange(of: store.role) { _, role in store.selectedTab = role == .clinician ? "assign" : role == .patient ? "patient" : "admin" }
-                Text("LOCAL DEMO · Fictional records · Role previews are simulated · Work is saved on this device")
-                    .font(.caption).foregroundStyle(.secondary)
-            }.padding().background(.bar)
+            if !store.gamePresented {
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack { Label("Samification", systemImage: "pills.fill").font(.headline); Spacer(); Text("v0.2 · Development").font(.caption).foregroundStyle(.secondary) }
+                    Picker("Demo role preview", selection: $store.role) { ForEach(DemoRole.allCases) { Text($0.rawValue).tag($0) } }
+                        .pickerStyle(.segmented).onChange(of: store.role) { _, role in store.selectedTab = role == .clinician ? "assign" : role == .patient ? "patient" : "admin" }
+                    Text("LOCAL DEMO · Fictional records · Role previews are simulated · Work is saved on this device")
+                        .font(.caption).foregroundStyle(.secondary)
+                }.padding().background(.bar)
+            }
             if let error = store.persistenceError {
                 VStack { Notice(text: error, color: .red); Button("Save again") { store.persist() } }.padding(.horizontal)
             }

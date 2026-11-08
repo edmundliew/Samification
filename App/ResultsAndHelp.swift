@@ -146,7 +146,7 @@ struct HelpView: View {
                 HelpStep(number: 4, title: "Review evidence", text: "In the clinician preview, open Results. Inspect the first attempt, later submissions, assistance used and audit trail. Record a separate clinical review.", symbol: "chart.bar")
             }
             Section("Patient controls") {
-                Text("Select Morning (sunrise), Afternoon (sun), Evening (sunset), or Bedtime (moon). Tap a pill in its bag to add one tablet to that compartment, or drag it directly into any compartment.")
+                Text("Select Morning (sunrise), Afternoon (sun), Evening (sunset), or Bedtime (moon). Tap the medication package image to add one tablet to that compartment, or drag the image into any compartment. If a package image is unavailable, use the medication symbol instead. Swipe sideways to find more medicines.")
                 Text("Tap a tablet in the tray to remove it. Clear all empties the working tray without deleting previous attempts or hints.")
                 Text("Check my daily tray saves a submission. Incorrect answers show red feedback and highlight extra/wrong-time tablets. Missing doses are listed. Correct answers show green feedback.")
                 Text("Ask for a hint appears only after an incorrect submission. Every hint display is counted. Use the reference card whenever needed.")

@@ -1,3 +1,13 @@
+# Medication image interaction and focused challenge — 8 November 2026
+
+Removed the separate lettered pill button from medication bags. The package image now belongs to the accessible add button and is the drag provider’s starting surface; the name, strength and medication code remain separate above it. Medicines without a matching image use a generic medication symbol inside the same button. Both games share this component. The in-app help now describes image taps and drags.
+
+While a local or connected challenge is presented, the demo role header and bottom tab bar are hidden. The Back button remains available; returning to the inbox restores the normal app header and tabs. This display state is transient and does not change roles, permissions, scoring or saved records. Reduced reference padding, a shorter instruction and a compact prior-exposure note preserve the relevant information while freeing vertical space. The page still scrolls when content needs it, including larger fonts, expanded references, many tablets or feedback.
+
+Built and launched through Xcode on iPhone 17e / iOS 27.2. At default text size, the medication row, all four tray periods and Check button were visible together without vertical scrolling. Verified Bedtime selection, adding A through the medication image button, removing the tray tablet, returning to the inbox with header and tabs restored, and reopening the focused game. Source parsing and whitespace checks passed. A simulator drag attempt did not produce a confirmed drop; physical drag/drop validation remains pending. The fallback, larger accessibility sizes, iPad layout and authenticated connected game also need further visual/gesture checks. The help copy update was source-checked after the running build; no scoring or transport changes were made.
+
+---
+
 # Compact single-row daily tray — 8 November 2026
 
 Both games now use four equal flexible columns for Morning, Afternoon, Evening and Bedtime, rather than an adaptive grid that wraps on iPhone. Pictograms sit above the labels in a shared accessible header. Reduced tray padding, compartment minimum height, card padding, package-photo height and vertical spacing keep more of the shelf and tray visible together. Names remain multiline, and text follows system font scaling; there is no fixed maximum tray height, so additional tablets remain visible as compartments grow.

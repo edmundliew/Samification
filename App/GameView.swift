@@ -10,9 +10,9 @@ struct GameView: View {
     var body: some View {
         ScrollView {
             if let c = challenge {
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("Choose a time, then tap a pill or drag it into the tray. Tap a tray tablet to remove it.").font(.subheadline)
-                    if c.priorExposure { Notice(text: "Earlier exposure to this regimen is recorded.", color: .orange) }
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Choose a time. Tap or drag a medication image into the tray. Tap a tray tablet to remove it.").font(.subheadline)
+                    if c.priorExposure { Label("Earlier regimen exposure recorded", systemImage: "info.circle").font(.caption).foregroundStyle(.orange) }
                     if c.superseded { Notice(text: "This regimen has been replaced. Open the latest challenge.", color: .red) }
                     DisclosureGroup("Your medication reference card") {
                         VStack(alignment: .leading, spacing: 12) {
@@ -24,7 +24,7 @@ struct GameView: View {
                                 }
                             }
                         }.padding(.top)
-                    }.padding().background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+                    }.padding(10).background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
                     MedicationShelf(medications: c.medications, disabled: c.locked) { m in
                         store.update(c.id) { $0.add(m.id, at: activePeriod) }; edited()
                     }
@@ -66,7 +66,9 @@ struct GameView: View {
                 }.padding().frame(maxWidth: 950).frame(maxWidth: .infinity)
             }
         }.navigationTitle("Plan your medication day").navigationBarTitleDisplayMode(.inline)
-            .onAppear { store.start(challengeID) }
+            .toolbar(.hidden, for: .tabBar)
+            .onAppear { store.gamePresented = true; store.start(challengeID) }
+            .onDisappear { store.gamePresented = false }
     }
     private func edited() { showingFeedback = false; showingHint = false }
     private func name(_ id: UUID, in c: Challenge) -> String { c.medications.first { $0.id == id }?.code ?? "Unknown medication" }
@@ -137,12 +139,19 @@ struct MedicationBag: View {
                 Text(medication.name).font(.subheadline.weight(.semibold)).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
                 Text("\(medication.strengthMG.formatted()) mg / tablet").font(.caption)
             }.frame(maxWidth: .infinity).padding(8).background(.background, in: RoundedRectangle(cornerRadius: 8))
-            if let image = medication.visibleImage {
-                Image(image).resizable().scaledToFit().frame(height: 60).accessibilityLabel("Example package for \(medication.name)")
+            Button(action: add) {
+                VStack(spacing: 4) {
+                    if let image = medication.visibleImage {
+                        Image(image).resizable().scaledToFit().frame(height: 64)
+                    } else {
+                        Image(systemName: "pills").font(.system(size: 28)).frame(height: 64)
+                    }
+                    Text("Tap / drag").font(.caption2).foregroundStyle(.secondary)
+                }.frame(maxWidth: .infinity).contentShape(Rectangle())
             }
-            Button(action: add) { VStack(spacing: 4) { PillIcon(code: medication.code); Text("Tap / drag").font(.caption) }.frame(maxWidth: .infinity).padding(.vertical, 6) }
-                .buttonStyle(.plain).disabled(disabled).draggable(medication.id.uuidString)
-                .accessibilityLabel("Add one \(medication.name) tablet to selected compartment")
+            .buttonStyle(.plain).disabled(disabled).draggable(medication.id.uuidString)
+            .accessibilityLabel("Add one \(medication.name) tablet to selected compartment")
+            .accessibilityHint("Tap to add one tablet, or drag this medication image into a time compartment.")
         }.padding(8).frame(maxWidth: .infinity).background(.teal.opacity(0.08), in: RoundedRectangle(cornerRadius: 15))
             .overlay(RoundedRectangle(cornerRadius: 15).stroke(.teal.opacity(0.4), lineWidth: 1))
     }
