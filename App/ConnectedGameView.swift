@@ -87,8 +87,11 @@ struct ConnectedGameView: View {
                             ForEach(DayPeriod.allCases) { period in compartment(period) }
                         }
                     }.padding(8).background(.brown.opacity(0.12), in: RoundedRectangle(cornerRadius: 20))
-                    Button("Clear all", systemImage: "arrow.counterclockwise") { game.tray = Tray(); game.edited() }.buttonStyle(.bordered).disabled(!game.editable || game.tray.isEmpty)
-                    HStack { Spacer(); Button("Check my daily tray") { Task { await game.send("submit", token: token) } }.buttonStyle(.borderedProminent).controlSize(.large).disabled(!game.editable || game.result == nil); Spacer() }
+                    TrayActionRow(clearDisabled: !game.editable || game.tray.isEmpty, checkDisabled: !game.editable || game.result == nil) {
+                        game.tray = Tray(); game.edited()
+                    } check: {
+                        Task { await game.send("submit", token: token) }
+                    }
                     if game.showingFeedback, let score = game.result?.score {
                         Notice(text: score.correct ? "Correct! Your daily tray matches." : "Let’s review your tray.", color: score.correct ? .green : .red)
                         ForEach(score.findings) { f in Text("\(meds.first { $0.id == f.medicationID }?.name ?? "Medication") · \(f.period.title): expected \(f.expected), submitted \(f.actual)").foregroundStyle(.red) }

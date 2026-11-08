@@ -1,3 +1,9 @@
+# Shared tray action row — 8 November 2026
+
+Both local and connected games use the same action row: a smaller Clear all button on the left and Check my daily tray centred on the page. Equal side widths preserve the primary action’s centre alignment. Existing disabled states and clear/submit handlers are retained; clearing does not reset assessment history. Only layout and shared UI composition changed. Source parsing and whitespace checks passed. Xcode built and launched the changed views on iPhone 17e; the final portrait preview confirmed a one-line Clear all label on the left and a centred Check button on the same row. Tapping Clear all emptied the working tray, left submissions/hints at zero and disabled Clear all while empty. Larger text and smaller screen widths still need visual checks.
+
+---
+
 # Medication image interaction and focused challenge — 8 November 2026
 
 Removed the separate lettered pill button from medication bags. The package image now belongs to the accessible add button and is the drag provider’s starting surface; the name, strength and medication code remain separate above it. Medicines without a matching image use a generic medication symbol inside the same button. Both games share this component. The in-app help now describes image taps and drags.

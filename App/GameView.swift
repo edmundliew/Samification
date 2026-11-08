@@ -36,9 +36,11 @@ struct GameView: View {
                             }
                         }
                     }.padding(8).background(Color.brown.opacity(0.12), in: RoundedRectangle(cornerRadius: 20))
-                    Button("Clear all", systemImage: "arrow.counterclockwise") { store.update(c.id) { $0.clear() }; edited() }
-                        .buttonStyle(.bordered).disabled(c.locked || c.tray.isEmpty)
-                    HStack { Spacer(); Button("Check my daily tray") { store.update(c.id) { $0.submit() }; showingFeedback = true; showingHint = false }.buttonStyle(.borderedProminent).controlSize(.large).disabled(c.locked); Spacer() }
+                    TrayActionRow(clearDisabled: c.locked || c.tray.isEmpty, checkDisabled: c.locked) {
+                        store.update(c.id) { $0.clear() }; edited()
+                    } check: {
+                        store.update(c.id) { $0.submit() }; showingFeedback = true; showingHint = false
+                    }
                     if showingFeedback, let attempt = c.attempts.last {
                         Notice(text: attempt.score.correct ? "Correct! Your daily tray matches." : "Let’s review your tray. Check the quantities and day periods below.", color: attempt.score.correct ? .green : .red)
                         if !attempt.score.correct {
@@ -87,6 +89,29 @@ struct GameView: View {
                 guard !c.locked, items.count == 1, let id = UUID(uuidString: items[0]), c.medications.contains(where: { $0.id == id }) else { return false }
                 activePeriod = period; store.update(c.id) { $0.add(id, at: period) }; edited(); return true
             }
+    }
+}
+
+struct TrayActionRow: View {
+    let clearDisabled: Bool
+    let checkDisabled: Bool
+    let clear: () -> Void
+    let check: () -> Void
+    var body: some View {
+        HStack(spacing: 6) {
+            Button(action: clear) {
+                Label("Clear all", systemImage: "arrow.counterclockwise")
+                    .font(.caption).fixedSize(horizontal: true, vertical: false).frame(minHeight: 32)
+            }.buttonStyle(.bordered).controlSize(.small).disabled(clearDisabled).frame(width: 76)
+            Spacer(minLength: 0)
+            Button(action: check) {
+                Text("Check my daily tray").font(.subheadline.weight(.semibold))
+                    .multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
+                    .frame(minHeight: 32)
+            }.buttonStyle(.borderedProminent).disabled(checkDisabled)
+            Spacer(minLength: 0)
+            Color.clear.frame(width: 76, height: 1).accessibilityHidden(true)
+        }
     }
 }
 
