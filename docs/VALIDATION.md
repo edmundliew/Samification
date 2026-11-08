@@ -1,3 +1,11 @@
+# Compact single-row daily tray — 8 November 2026
+
+Both games now use four equal flexible columns for Morning, Afternoon, Evening and Bedtime, rather than an adaptive grid that wraps on iPhone. Pictograms sit above the labels in a shared accessible header. Reduced tray padding, compartment minimum height, card padding, package-photo height and vertical spacing keep more of the shelf and tray visible together. Names remain multiline, and text follows system font scaling; there is no fixed maximum tray height, so additional tablets remain visible as compartments grow.
+
+Built and launched through Xcode on iPhone 17e / iOS 27.2. Portrait inspection confirmed all four compartments across the screen with pill controls visible above. Verified selecting Bedtime, tapping A to add to Bedtime and tapping that tray tablet to remove it. Source parsing and diff checks passed. Scoring and transport logic are unchanged. The drag/drop handlers remain intact; a drag gesture was interrupted during this check, so successful drag/drop is not claimed. Larger text, smaller iPhones, landscape and the connected authenticated UI still require device checks.
+
+---
+
 # Horizontal medication shelf and signing — 8 November 2026
 
 The account owner approved configuring the Yong Hock Liew Apple Developer team for this app. Xcode displayed a managed provisioning profile and an Apple Development signing certificate. Debug and Release now specify team `3T3328WVBE`; the bundle identifier remains `com.edmundliew.samification`. No signing secrets or profiles are committed. Archive creation, distribution validation and TestFlight upload remain pending; the Product menu exposed Archive as disabled during this session.

@@ -71,7 +71,7 @@ struct ConnectedGameView: View {
     var body: some View {
         ScrollView {
             if game.accessValid {
-                VStack(alignment: .leading, spacing: 20) {
+                VStack(alignment: .leading, spacing: 12) {
                     Text(game.entry.practice ? "Practice · regimen v\(game.entry.regimen_version)" : "Assessment · regimen v\(game.entry.regimen_version)").font(.headline)
                     Text("Select a compartment, then tap a pill. Drag into any compartment. Tap a tablet in the tray to remove it.")
                     if game.result?.priorExposure == true { Notice(text: "A previous challenge for this regimen was started. Earlier exposure is recorded.", color: .orange) }
@@ -82,10 +82,10 @@ struct ConnectedGameView: View {
                     }
                     VStack(alignment: .leading) {
                         Text("Your daily tray · taps add to \(active.title)").font(.headline)
-                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 145))], spacing: 12) {
+                        LazyVGrid(columns: Array(repeating: GridItem(.flexible(minimum: 0), alignment: .top), count: 4), spacing: 6) {
                             ForEach(DayPeriod.allCases) { period in compartment(period) }
                         }
-                    }.padding().background(.brown.opacity(0.12), in: RoundedRectangle(cornerRadius: 20))
+                    }.padding(8).background(.brown.opacity(0.12), in: RoundedRectangle(cornerRadius: 20))
                     Button("Clear all", systemImage: "arrow.counterclockwise") { game.tray = Tray(); game.edited() }.buttonStyle(.bordered).disabled(!game.editable || game.tray.isEmpty)
                     HStack { Spacer(); Button("Check my daily tray") { Task { await game.send("submit", token: token) } }.buttonStyle(.borderedProminent).controlSize(.large).disabled(!game.editable || game.result == nil); Spacer() }
                     if game.showingFeedback, let score = game.result?.score {
@@ -129,7 +129,7 @@ struct ConnectedGameView: View {
     }
     private func compartment(_ period: DayPeriod) -> some View {
         VStack {
-            Button { active = period } label: { Label(period.title, systemImage: period.symbol) }.buttonStyle(.bordered).tint(active == period ? .teal : .secondary).disabled(!game.editable)
+            Button { active = period } label: { TrayPeriodLabel(period: period) }.buttonStyle(.plain).padding(.vertical, 4).frame(maxWidth: .infinity).background(active == period ? Color.teal.opacity(0.15) : Color.secondary.opacity(0.08), in: RoundedRectangle(cornerRadius: 10)).tint(active == period ? .teal : .secondary).disabled(!game.editable)
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 48))]) {
                 ForEach(TrayTablet.items(meds, tray: game.tray, period: period)) { tablet in
                     let m = tablet.medication
@@ -140,7 +140,7 @@ struct ConnectedGameView: View {
                 }
             }
             Spacer(minLength: 40)
-        }.padding(10).frame(minHeight: 180).frame(maxWidth: .infinity).background(.background, in: RoundedRectangle(cornerRadius: 16))
+        }.padding(4).frame(maxWidth: .infinity, minHeight: 140).background(.background, in: RoundedRectangle(cornerRadius: 16))
             .overlay(RoundedRectangle(cornerRadius: 16).stroke(active == period ? Color.teal : Color.gray))
             .dropDestination(for: String.self) { items, _ in
                 guard game.editable, items.count == 1, let id = UUID(uuidString: items[0]), meds.contains(where: { $0.id == id }) else { return false }

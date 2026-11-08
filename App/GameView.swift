@@ -10,8 +10,8 @@ struct GameView: View {
     var body: some View {
         ScrollView {
             if let c = challenge {
-                VStack(alignment: .leading, spacing: 20) {
-                    Text("Select a compartment, then tap a pill to add it. Drag a pill directly into any compartment. Tap a tray tablet to remove it.")
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Choose a time, then tap a pill or drag it into the tray. Tap a tray tablet to remove it.").font(.subheadline)
                     if c.priorExposure { Notice(text: "Earlier exposure to this regimen is recorded.", color: .orange) }
                     if c.superseded { Notice(text: "This regimen has been replaced. Open the latest challenge.", color: .red) }
                     DisclosureGroup("Your medication reference card") {
@@ -30,12 +30,12 @@ struct GameView: View {
                     }
                     VStack(alignment: .leading, spacing: 12) {
                         HStack { Text("Your daily tray").font(.headline); Spacer(); Text("Taps add to \(activePeriod.title)").font(.caption) }
-                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 145), alignment: .top)], spacing: 12) {
+                        LazyVGrid(columns: Array(repeating: GridItem(.flexible(minimum: 0), alignment: .top), count: 4), alignment: .leading, spacing: 6) {
                             ForEach(DayPeriod.allCases) { period in
                                 compartment(c, period)
                             }
                         }
-                    }.padding().background(Color.brown.opacity(0.12), in: RoundedRectangle(cornerRadius: 20))
+                    }.padding(8).background(Color.brown.opacity(0.12), in: RoundedRectangle(cornerRadius: 20))
                     Button("Clear all", systemImage: "arrow.counterclockwise") { store.update(c.id) { $0.clear() }; edited() }
                         .buttonStyle(.bordered).disabled(c.locked || c.tray.isEmpty)
                     HStack { Spacer(); Button("Check my daily tray") { store.update(c.id) { $0.submit() }; showingFeedback = true; showingHint = false }.buttonStyle(.borderedProminent).controlSize(.large).disabled(c.locked); Spacer() }
@@ -73,18 +73,30 @@ struct GameView: View {
     private func compartment(_ c: Challenge, _ period: DayPeriod) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             Button { activePeriod = period } label: {
-                Label(period.title, systemImage: period.symbol).font(.headline).frame(maxWidth: .infinity).padding(.vertical, 10)
-            }.buttonStyle(.bordered).tint(activePeriod == period ? .teal : .secondary).disabled(c.locked)
+                TrayPeriodLabel(period: period)
+            }.buttonStyle(.plain).padding(.vertical, 4).frame(maxWidth: .infinity).background(activePeriod == period ? Color.teal.opacity(0.15) : Color.secondary.opacity(0.08), in: RoundedRectangle(cornerRadius: 10)).foregroundStyle(activePeriod == period ? .teal : .secondary).disabled(c.locked)
             FlowPills(challenge: c, period: period, assessed: showingFeedback) { id in
                 store.update(c.id) { $0.remove(id, at: period) }; edited()
             }
             Spacer(minLength: 0)
-        }.padding(10).frame(minHeight: 185).background(.background, in: RoundedRectangle(cornerRadius: 16))
+        }.padding(4).frame(maxWidth: .infinity, minHeight: 140).background(.background, in: RoundedRectangle(cornerRadius: 16))
             .overlay(RoundedRectangle(cornerRadius: 16).stroke(activePeriod == period ? Color.teal : Color.secondary.opacity(0.3), lineWidth: activePeriod == period ? 3 : 1))
             .dropDestination(for: String.self) { items, _ in
                 guard !c.locked, items.count == 1, let id = UUID(uuidString: items[0]), c.medications.contains(where: { $0.id == id }) else { return false }
                 activePeriod = period; store.update(c.id) { $0.add(id, at: period) }; edited(); return true
             }
+    }
+}
+
+struct TrayPeriodLabel: View {
+    let period: DayPeriod
+    var body: some View {
+        VStack(spacing: 4) {
+            Image(systemName: period.symbol).font(.system(size: 18))
+            Text(period.title).font(.caption2).multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+        }.frame(maxWidth: .infinity, minHeight: 48)
+        .accessibilityElement(children: .ignore).accessibilityLabel(period.title)
     }
 }
 
@@ -100,9 +112,9 @@ struct MedicationShelf: View {
                 HStack(alignment: .top, spacing: 12) {
                     ForEach(medications) { medication in
                         MedicationBag(medication: medication, disabled: disabled) { add(medication) }
-                            .frame(width: 160)
+                            .frame(width: 148)
                     }
-                }.padding(.bottom, 12)
+                }.padding(.bottom, 8)
             }
             .scrollIndicators(.visible)
             .scrollIndicatorsFlash(onAppear: true)
@@ -115,23 +127,23 @@ struct MedicationBag: View {
     let disabled: Bool
     let add: () -> Void
     var body: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 8) {
             VStack(spacing: 4) {
                 Capsule().fill(.teal.opacity(0.6)).frame(height: 3)
                 Capsule().fill(.teal.opacity(0.3)).frame(height: 2)
             }
-            VStack(spacing: 6) {
+            VStack(spacing: 4) {
                 Text("MEDICATION \(medication.code)").font(.caption).foregroundStyle(.secondary)
-                Text(medication.name).font(.headline).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
-                Text("\(medication.strengthMG.formatted()) mg / tablet").font(.subheadline)
+                Text(medication.name).font(.subheadline.weight(.semibold)).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
+                Text("\(medication.strengthMG.formatted()) mg / tablet").font(.caption)
             }.frame(maxWidth: .infinity).padding(8).background(.background, in: RoundedRectangle(cornerRadius: 8))
             if let image = medication.visibleImage {
-                Image(image).resizable().scaledToFit().frame(height: 90).accessibilityLabel("Example package for \(medication.name)")
+                Image(image).resizable().scaledToFit().frame(height: 60).accessibilityLabel("Example package for \(medication.name)")
             }
-            Button(action: add) { VStack(spacing: 8) { PillIcon(code: medication.code); Text("Tap / drag").font(.caption) }.frame(maxWidth: .infinity).padding(.vertical, 6) }
+            Button(action: add) { VStack(spacing: 4) { PillIcon(code: medication.code); Text("Tap / drag").font(.caption) }.frame(maxWidth: .infinity).padding(.vertical, 6) }
                 .buttonStyle(.plain).disabled(disabled).draggable(medication.id.uuidString)
                 .accessibilityLabel("Add one \(medication.name) tablet to selected compartment")
-        }.padding(12).frame(maxWidth: .infinity).background(.teal.opacity(0.08), in: RoundedRectangle(cornerRadius: 15))
+        }.padding(8).frame(maxWidth: .infinity).background(.teal.opacity(0.08), in: RoundedRectangle(cornerRadius: 15))
             .overlay(RoundedRectangle(cornerRadius: 15).stroke(.teal.opacity(0.4), lineWidth: 1))
     }
 }
