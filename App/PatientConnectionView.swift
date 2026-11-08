@@ -57,12 +57,12 @@ import Observation
 }
 
 struct PatientConnectionView: View {
-    @State private var connection = PatientConnectionStore()
+    @Bindable var connection: PatientConnectionStore
     @Environment(\.scenePhase) private var scenePhase
     var body: some View {
         @Bindable var connection = connection
         List {
-            Section { Notice(text: "Patient connection · Development preview. Use a pairing code issued by your clinician for a fictional admission. This connection does not require email.") }
+            Section { Notice(text: "Use the pairing code provided by your care team. No email or staff sign-in is needed. Development build: fictional admissions only.") }
             if !connection.configured {
                 Section { Text("Patient connection is not configured in this build.") }
             } else if connection.paired {
@@ -92,7 +92,7 @@ struct PatientConnectionView: View {
             }
             if let notice = connection.notice { Section { Notice(text: notice, color: .red) } }
             if connection.busy { ProgressView("Connecting…") }
-        }.disabled(connection.busy).navigationTitle("Patient connection")
+        }.disabled(connection.busy).navigationTitle(connection.paired ? "My challenges" : "Join my care")
             .onChange(of: scenePhase) { _, phase in
                 if phase == .active && connection.paired { Task { await connection.refresh() } }
                 else if phase != .active { connection.inbox = []; connection.expiration = nil; connection.games.values.forEach { $0.invalidate() } }

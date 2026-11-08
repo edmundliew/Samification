@@ -9,7 +9,7 @@ struct SamificationApp: App {
 }
 
 enum DemoRole: String, CaseIterable, Identifiable {
-    case administrator = "Administrator", clinician = "Clinician", patient = "Patient"
+    case clinician = "Clinician", patient = "Patient"
     var id: String { rawValue }
 }
 
@@ -24,7 +24,7 @@ enum DemoRole: String, CaseIterable, Identifiable {
     var message: String?
     var accessRequests = ["Demo nurse · Ward A"]
     var approvedStaff: [String] = []
-    var selectedTab = "account"
+    var selectedTab = "assign"
     var patient: PatientCase { workspace.patients[workspace.selectedIndex] }
     var medications: [Medication] {
         get { patient.draft }
@@ -96,17 +96,133 @@ enum DemoRole: String, CaseIterable, Identifiable {
     func patientPreview() { role = .patient; selectedTab = "patient" }
 }
 
+// Entry preference selects a workspace; it never grants a server role.
+private enum AppEntry: String { case welcome, patient, staff, demo }
+
 struct RootView: View {
+    @AppStorage("samification.entry.v1") private var entryValue = AppEntry.welcome.rawValue
+    @State private var account = StaffAccountStore()
+    @State private var connection = PatientConnectionStore()
+    @State private var restoring = true
+    @Environment(\.scenePhase) private var scenePhase
+    private var entry: AppEntry { AppEntry(rawValue: entryValue) ?? .welcome }
+    var body: some View {
+        Group {
+            if restoring {
+                ProgressView("Opening Samification…")
+            } else {
+                switch entry {
+                case .welcome:
+                    WelcomeView(onPatient: { entryValue = AppEntry.patient.rawValue },
+                                onStaff: { entryValue = AppEntry.staff.rawValue },
+                                onDemo: { entryValue = AppEntry.demo.rawValue })
+                case .patient:
+                    NavigationStack {
+                        PatientConnectionView(connection: connection)
+                            .toolbar { if !connection.paired { ToolbarItem(placement: .topBarLeading) { Button("Back") { entryValue = AppEntry.welcome.rawValue } } } }
+                    }
+                case .staff:
+                    if account.clinician {
+                        ClinicianWorkspaceView(account: account)
+                    } else {
+                        NavigationStack {
+                            StaffAccountView(account: account)
+                                .toolbar { if account.session == nil { ToolbarItem(placement: .topBarLeading) { Button("Back") { entryValue = AppEntry.welcome.rawValue } } } }
+                        }
+                    }
+                case .demo:
+                    DemoWorkspaceView { entryValue = AppEntry.welcome.rawValue }
+                }
+            }
+        }
+        .task {
+            if entry == .staff { await account.restore() }
+            restoring = false
+            while !Task.isCancelled {
+                do { try await Task.sleep(for: .seconds(300)) } catch { break }
+                if scenePhase == .active && entry == .staff { await account.renew() }
+            }
+        }
+        .onChange(of: entryValue) { _, _ in
+            if entry == .staff { Task { await account.restore() } }
+        }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active && entry == .staff { Task { await account.renew() } }
+            else if phase != .active { account.password = ""; account.newPassword = ""; account.confirmPassword = "" }
+        }
+    }
+}
+
+private struct WelcomeView: View {
+    let onPatient: () -> Void
+    let onStaff: () -> Void
+    let onDemo: () -> Void
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 24) {
+                Image(systemName: "pills.fill").font(.system(size: 44)).foregroundStyle(.teal).accessibilityHidden(true)
+                Text("Samification").font(.largeTitle.bold())
+                Text("Build confidence with your medicines.").font(.title3).foregroundStyle(.secondary)
+                entryButton("Join my care", detail: "For patients · Enter the code provided by your care team", symbol: "qrcode", action: onPatient)
+                entryButton("Staff sign-in", detail: "For clinicians · Access your ward and patients", symbol: "person.crop.rectangle", action: onStaff)
+                Divider()
+                Button("Try demo", systemImage: "play.circle", action: onDemo)
+                Text("Explore with fictional records. No sign-in or pairing code needed.").font(.caption).foregroundStyle(.secondary)
+                Text("Development build · Use fictional data only").font(.caption).foregroundStyle(.secondary)
+            }.padding(28).frame(maxWidth: 540, alignment: .leading).frame(maxWidth: .infinity)
+        }
+    }
+    private func entryButton(_ title: String, detail: String, symbol: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            VStack(alignment: .leading, spacing: 10) {
+                Label(title, systemImage: symbol).font(.title2.bold())
+                Text(detail).font(.body)
+            }.frame(maxWidth: .infinity, alignment: .leading).padding(20)
+        }.buttonStyle(.plain).background(.teal.opacity(0.09), in: RoundedRectangle(cornerRadius: 20))
+    }
+}
+
+private struct ClinicianWorkspaceView: View {
+    let account: StaffAccountStore
+    @State private var selectedTab = "patients"
+    var body: some View {
+        TabView(selection: $selectedTab) {
+            NavigationStack { ConnectedClinicalView(account: account) }.tabItem { Label("Patients", systemImage: "person.2") }.tag("patients")
+            NavigationStack { StaffAccountView(account: account) }.tabItem { Label("Account", systemImage: "person.crop.circle") }.tag("account")
+            NavigationStack { CareHelpView() }.tabItem { Label("Help", systemImage: "questionmark.circle") }.tag("help")
+        }
+    }
+}
+
+private struct CareHelpView: View {
+    var body: some View {
+        List {
+            Section("Clinician → Patient → Clinician") {
+                HelpStep(number: 1, title: "Prepare", text: "Select a patient admission. Upload the medication CSV, edit names and check every dose, strength, time and direction before confirming the regimen.", symbol: "list.clipboard")
+                HelpStep(number: 2, title: "Assign and pair", text: "Assign practice or assessment, then generate a pairing code. Ask the patient to open Join my care and enter that code on their device.", symbol: "qrcode")
+                HelpStep(number: 3, title: "Patient challenge", text: "The patient opens the assigned challenge, taps or drags medication images into the daily tray, checks their answer and shares the completed challenge.", symbol: "pills")
+                HelpStep(number: 4, title: "Review", text: "Open the patient's results. Inspect first-attempt accuracy, later attempts, assistance and the audit trail, then record a separate clinical review.", symbol: "chart.bar")
+            }
+            Section("Access") {
+                Text("New clinician accounts require administrator approval for a ward. Patient pairing provides access to the paired admission only. Administrator controls belong in the separate web portal.")
+                Text("The game does not automatically qualify a patient for medication self-administration. Clinical review and local policy remain required.")
+            }
+        }.navigationTitle("Help")
+    }
+}
+
+private struct DemoWorkspaceView: View {
     @Environment(DemoStore.self) private var store
+    let onExit: () -> Void
     var body: some View {
         @Bindable var store = store
         VStack(spacing: 0) {
             if !store.gamePresented {
                 VStack(alignment: .leading, spacing: 8) {
-                    HStack { Label("Samification", systemImage: "pills.fill").font(.headline); Spacer(); Text("v0.2 · Development").font(.caption).foregroundStyle(.secondary) }
-                    Picker("Demo role preview", selection: $store.role) { ForEach(DemoRole.allCases) { Text($0.rawValue).tag($0) } }
-                        .pickerStyle(.segmented).onChange(of: store.role) { _, role in store.selectedTab = role == .clinician ? "assign" : role == .patient ? "patient" : "admin" }
-                    Text("LOCAL DEMO · Fictional records · Role previews are simulated · Work is saved on this device")
+                    HStack { Label("Fictional demo", systemImage: "play.circle").font(.headline); Spacer(); Button("Exit demo", action: onExit) }
+                    Picker("Demo preview", selection: $store.role) { ForEach(DemoRole.allCases) { Text($0.rawValue).tag($0) } }
+                        .pickerStyle(.segmented).onChange(of: store.role) { _, role in store.selectedTab = role == .clinician ? "assign" : "patient" }
+                    Text("Fictional records · Saved on this device · No connected accounts")
                         .font(.caption).foregroundStyle(.secondary)
                 }.padding().background(.bar)
             }
@@ -118,16 +234,13 @@ struct RootView: View {
                     NavigationStack { MedicationReviewView() }.tabItem { Label("Medications", systemImage: "list.clipboard") }.tag("meds")
                     NavigationStack { AssignmentView() }.tabItem { Label("Assign", systemImage: "paperplane") }.tag("assign")
                     NavigationStack { ResultsView() }.tabItem { Label("Results", systemImage: "chart.bar") }.tag("results")
-                } else if store.role == .patient {
-                    NavigationStack { PatientInboxView() }.tabItem { Label("Demo", systemImage: "tray") }.tag("patient")
-                    NavigationStack { PatientConnectionView() }.tabItem { Label("Join", systemImage: "qrcode") }.tag("join")
                 } else {
-                    NavigationStack { AdministratorView() }.tabItem { Label("Users", systemImage: "person.badge.key") }.tag("admin")
+                    NavigationStack { PatientInboxView() }.tabItem { Label("Challenges", systemImage: "tray") }.tag("patient")
                 }
-                NavigationStack { StaffAccountView() }.tabItem { Label("Account", systemImage: "person.crop.circle") }.tag("account")
                 NavigationStack { HelpView() }.tabItem { Label("Help", systemImage: "questionmark.circle") }.tag("help")
             }
-        }.alert("Samification", isPresented: Binding(get: { store.message != nil }, set: { if !$0 { store.message = nil } })) { Button("OK") { store.message = nil } } message: { Text(store.message ?? "") }
+        }.onAppear { store.selectedTab = store.role == .clinician ? "assign" : "patient" }
+        .alert("Samification", isPresented: Binding(get: { store.message != nil }, set: { if !$0 { store.message = nil } })) { Button("OK") { store.message = nil } } message: { Text(store.message ?? "") }
     }
 }
 
@@ -138,29 +251,5 @@ struct Notice: View {
         Label(text, systemImage: color == .red ? "exclamationmark.circle.fill" : "info.circle.fill")
             .font(.subheadline).frame(maxWidth: .infinity, alignment: .leading).padding()
             .foregroundStyle(color).background(color.opacity(0.10), in: RoundedRectangle(cornerRadius: 14))
-    }
-}
-
-struct AdministratorView: View {
-    @Environment(DemoStore.self) private var store
-    var body: some View {
-        List {
-            Section { Text("Administrator preview only. These controls change fictional local records; Supabase approval and access enforcement arrive in v0.2.") }
-            Section("Access requests") {
-                if store.accessRequests.isEmpty { Text("No pending demo requests").foregroundStyle(.secondary) }
-                ForEach(store.accessRequests, id: \.self) { name in
-                    VStack(alignment: .leading) { Text(name); Button("Approve demo clinician") { store.approvedStaff.append(name); store.accessRequests.removeAll { $0 == name } } }
-                }
-            }
-            Section("Approved demo staff") {
-                ForEach(store.approvedStaff, id: \.self) { name in
-                    VStack(alignment: .leading) { Text(name); Button("Suspend demo access", role: .destructive) { store.approvedStaff.removeAll { $0 == name }; store.accessRequests.append(name) } }
-                }
-            }
-            Section("Medication catalogue") {
-                NavigationLink("Browse demo products & package photos") { CatalogueView() }
-                Text("Product strengths and photos are separate from each patient’s prescribed dose and schedule.")
-            }
-        }.navigationTitle("Administration")
     }
 }

@@ -1,3 +1,9 @@
+# Separate workspace checkpoint — 8 November 2026
+
+The current entry/navigation validation is recorded in [WORKSPACES.md](WORKSPACES.md). Native Xcode build/launch and welcome → patient/staff/demo paths passed on iPhone 17e. All 48 core tests and five mocked admin portal tests pass. The portal is local-only; valid native/portal sign-in, automatic approved-clinician routing and Cloudflare deployment remain unverified. No role grants or production clinical changes were made.
+
+The records below describe earlier checkpoints; the former initial Account tab and mobile administrator controls have been replaced.
+
 # Simplified staff authentication — 8 November 2026
 
 Implemented standard email/password sign-in as the primary Account screen and initial app tab. First-time account/password setup and recovery are in a collapsed secondary flow. Added authenticated password updates, device-only Keychain session persistence, refresh-token renewal, user-ID matching on restore, foreground/periodic refresh and local credential clearing on sign-out or invalid session. Roles remain server-authorized.

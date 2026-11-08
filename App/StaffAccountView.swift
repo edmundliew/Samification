@@ -56,6 +56,7 @@ private enum StaffSessionVault {
     private var client: StaffAccessClient? { BackendConfiguration.client() }
     var configured: Bool { client != nil }
     var administrator: Bool { memberships.contains { $0.user_id == session?.user.id && $0.role == "administrator" && $0.active } }
+    var clinician: Bool { memberships.contains { $0.user_id == session?.user.id && $0.role == "clinician" && $0.active } }
     var emailValid: Bool { email.contains("@") && email.count <= 254 && !email.contains(where: \.isWhitespace) }
     func perform(_ action: @escaping (StaffAccessClient) async throws -> Void) async {
         guard !busy else { return }
@@ -152,14 +153,20 @@ private enum StaffSessionVault {
     func refresh() async { await perform { try await self.load($0) } }
     private func load(_ client: StaffAccessClient) async throws {
         guard let token = session?.access_token else { return }
-        // Clear cached grants before checking current server permissions; failures keep no stale access list.
-        scopes = []; memberships = []; requests = []
-        let newMemberships = try await client.memberships(token: token)
-        let newScopes = try await client.scopes(token: token)
-        let newRequests = try await client.requests(token: token)
-        memberships = newMemberships; scopes = newScopes; requests = newRequests
-        if !scopes.contains(where: { $0.id == selectedScope && $0.active }) { selectedScope = scopes.first(where: \.active)?.id }
+        // Commit access as one snapshot to avoid tearing down navigation during renewal.
+        // Any failed refresh removes cached access; every clinical RPC also enforces RLS.
+        do {
+            let newMemberships = try await client.memberships(token: token)
+            let newScopes = try await client.scopes(token: token)
+            let newRequests = try await client.requests(token: token)
+            memberships = newMemberships; scopes = newScopes; requests = newRequests
+            if !scopes.contains(where: { $0.id == selectedScope && $0.active }) { selectedScope = scopes.first(where: \.active)?.id }
+        } catch {
+            scopes = []; memberships = []; requests = []
+            throw error
+        }
     }
+
     func requestAccess() async {
         guard let token = session?.access_token, let scope = selectedScope else { return }
         await perform { client in
@@ -193,14 +200,13 @@ private enum StaffSessionVault {
 }
 
 struct StaffAccountView: View {
-    @State private var account = StaffAccountStore()
-    @Environment(\.scenePhase) private var scenePhase
+    @Bindable var account: StaffAccountStore
     var body: some View {
         @Bindable var account = account
         Form {
             Section {
-                Text("Connected staff access").font(.headline)
-                Text("Sign in first. Administrator or clinician access requires separate approval.").font(.caption)
+                Text("Clinician sign-in").font(.headline)
+                Text("Sign in to access your approved ward. New clinicians require administrator approval.").font(.caption)
             }
             if !account.configured {
                 Section { Notice(text: "Connected access is not configured in this build. Add the project URL and publishable key using Config/Local.xcconfig.", color: .orange) }
@@ -219,20 +225,14 @@ struct StaffAccountView: View {
                         .disabled(account.newPassword.count < 12 || account.newPassword != account.confirmPassword)
                   }
                 }
-                Section("Your access") {
-                    let own = account.memberships.filter { $0.user_id == session.user.id }
-                    if own.isEmpty { Text("No approved staff role. You can request clinician access below.") }
+                Section("Your clinician access") {
+                    let own = account.memberships.filter { $0.user_id == session.user.id && $0.role == "clinician" }
+                    if own.isEmpty { Text("Your account has no approved clinician access. Submit a request below; an administrator must approve it.") }
                     ForEach(own) { m in
                         VStack(alignment: .leading) {
-                            Text(m.role.capitalized).font(.headline)
-                            Text(m.role == "administrator" ? "User administration" : account.scopeName(m.scope_id))
+                            Text(account.scopeName(m.scope_id)).font(.headline)
                             Text(m.active ? "Active" : "Suspended").foregroundStyle(m.active ? .green : .red)
                         }
-                    }
-                }
-                if account.memberships.contains(where: { $0.user_id == session.user.id && $0.role == "clinician" && $0.active }) {
-                    Section("Clinician workspace") {
-                        NavigationLink("Open connected admissions") { ConnectedClinicalView(account: account) }
                     }
                 }
                 Section("Request clinician access") {
@@ -245,36 +245,10 @@ struct StaffAccountView: View {
                         .disabled(account.selectedScope == nil || account.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || account.name.count > 100)
                     if account.scopes.isEmpty { Text("An administrator must configure a care scope first.").font(.caption) }
                 }
-                if account.administrator {
-                    Section("Administrator decision reason") {
-                        TextField("Reason for approval or access change", text: $account.reason, axis: .vertical)
-                        Text("A reason is required and retained in the server audit log. Approvals grant clinician access to the requested scope only.").font(.caption)
-                    }
-                    Section("Pending requests") {
-                        let pending = account.requests.filter { $0.status == "pending" }
-                        if pending.isEmpty { Text("No pending requests") }
-                        ForEach(pending) { r in
-                            VStack(alignment: .leading, spacing: 8) {
-                                Text(r.display_name).font(.headline); Text(account.scopeName(r.scope_id))
-                                Button("Approve clinician") { Task { await account.decide(r.id, approve: true) } }
-                                Button("Reject request", role: .destructive) { Task { await account.decide(r.id, approve: false) } }
-                            }.disabled(!reasonValid)
-                        }
-                    }
-                    Section("Clinician memberships") {
-                        ForEach(account.memberships.filter { $0.role == "clinician" }) { m in
-                            VStack(alignment: .leading, spacing: 8) {
-                                Text(account.requests.first { $0.user_id == m.user_id && $0.scope_id == m.scope_id }?.display_name ?? "Staff member")
-                                Text(account.scopeName(m.scope_id))
-                                Button(m.active ? "Suspend access" : "Resume access", role: m.active ? .destructive : nil) { Task { await account.setAccess(m) } }.disabled(!reasonValid)
-                            }
-                        }
-                    }
-                } else {
-                    Section("Your requests") {
-                        ForEach(account.requests) { r in Text("\(account.scopeName(r.scope_id)) · \(r.status.capitalized)") }
-                    }
+                Section("Your requests") {
+                    ForEach(account.requests.filter { $0.user_id == session.user.id }) { r in Text("\(account.scopeName(r.scope_id)) · \(r.status.capitalized)") }
                 }
+
             } else {
                 Section("Sign in") {
                     TextField("Email address", text: $account.email).textContentType(.username).keyboardType(.emailAddress).textInputAutocapitalization(.never).autocorrectionDisabled()
@@ -307,17 +281,5 @@ struct StaffAccountView: View {
             if let notice = account.notice, account.session != nil { Section { Notice(text: notice, color: account.failed ? .red : .teal) } }
             if account.busy { ProgressView("Contacting Supabase…") }
         }.disabled(account.busy).navigationTitle("Staff account")
-            .task {
-                await account.restore()
-                while !Task.isCancelled {
-                    do { try await Task.sleep(for: .seconds(300)) } catch { break }
-                    if scenePhase == .active { await account.renew() }
-                }
-            }
-            .onChange(of: scenePhase) { _, phase in
-                if phase == .active { Task { await account.renew() } }
-                else { account.password = ""; account.newPassword = ""; account.confirmPassword = "" }
-            }
     }
-    private var reasonValid: Bool { let value = account.reason.trimmingCharacters(in: .whitespacesAndNewlines); return !value.isEmpty && value.count <= 500 }
 }

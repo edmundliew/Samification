@@ -1,14 +1,12 @@
 # Samification
 
-Medication tray assessment prototype for iPhone and iPad. Bundle identifier: `com.edmundliew.samification`.
+SwiftUI iPhone/iPad medication assessment app with Supabase-backed clinician and patient workflows. Development checkpoint, 8 November 2026; use fictional data only.
 
-## Current development build
+The app opens with **Join my care**, **Staff sign-in**, and a separate **Try demo** entry. Patients see pairing and assigned challenges only. Approved clinicians enter the Patients workspace; medication review, assignments, pairing, evidence and reviews are grouped by admission. Mobile administrator controls have been removed. The separate administrator portal is in `web/admin`; it is prepared locally and not yet deployed to Cloudflare.
 
-The clinician workflow now supports multiple fictional patients with separate CSV drafts, immutable confirmed regimen versions, assignments, tray evidence and reviews. The workspace is saved locally and restored after app restart. The four demo medications are preconfirmed for each new fictional patient. Product references and photos can be browsed separately from patient prescriptions.
+Staff email/password sign-in and secure session restoration are implemented. First-time email verification/password setup remains unresolved for the owner's test account: the supplied link returned `otp_expired`. Valid native sign-in, restoration and the complete connected native workflow have not yet been verified. The owner already has administrator and clinician access scoped to the fictional test ward. Backend migrations for staff access, clinical workflow, patient pairing and assessment evidence are deployed.
 
-The Account screen and staff-access Supabase migration are present. The staff migration is deployed; email setup and initial administrator provisioning are deferred. Connected clinician screens now call the admissions, regimen confirmation and assignment API. Clinician pairing and patient Join screens are implemented, with a temporary patient identity and restricted medication-reference inbox. The clinical and pairing migrations are **deployed**, and temporary patient Auth sign-in is enabled. Six live schema/grant checks and 13 unpaired Auth/API checks pass. Initial staff provisioning, valid paired cross-device validation and server-scored game submissions remain pending. Role switching still controls only fictional local previews.
-
-This is a development source checkpoint, not a clinically validated or signed distribution. Use fictional data only. The stable `v0.1.0` tag retains the original session-only preview. See [current workflow validation](docs/CORE_WORKFLOW.md) and [release history](docs/RELEASES.md).
+The isolated demo retains CSV review, four preconfirmed fictional medicines, clinician/patient previews, the visual tray game and results. Role previews never authorize connected access. See [workspace design and validation](docs/WORKSPACES.md), [validation](docs/VALIDATION.md), and [portal setup](web/admin/README.md). No App Store or TestFlight publication has occurred.
 
 ## Open and run
 
@@ -17,7 +15,7 @@ This is a development source checkpoint, not a clinically validated or signed di
 3. Select an iPhone or iPad simulator and run. No developer team is needed for simulator builds.
 4. For a device, set your Apple development team in Signing & Capabilities. Bundle ID availability and App Store registration are not yet verified.
 
-Use the Clinician preview to assign a challenge, switch to Patient, play and share, then switch back to Clinician → Results. Help documents the full workflow. Administrator actions are fictional local changes.
+Use Try demo to assign a fictional challenge, preview Patient, play and share, then return to Clinician → Results. Exit demo to use the real pairing or staff entry. Administrator access is managed in the separate web portal.
 
 ## Verification
 

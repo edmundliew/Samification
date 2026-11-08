@@ -119,7 +119,7 @@ struct ConnectedClinicalView: View {
                 Button("Refresh admissions") { Task { await records.refresh(account) } }
             }
             if let notice = account.notice { Section { Notice(text: notice, color: account.failed ? .red : .teal) } }
-        }.navigationTitle("Connected admissions").disabled(account.busy)
+        }.navigationTitle("Patients").disabled(account.busy)
             .task { if records.selectedScope == nil { records.selectedScope = scopes.first?.id }; await records.refresh(account) }
     }
 }
