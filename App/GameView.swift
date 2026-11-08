@@ -129,6 +129,17 @@ struct PillIcon: View {
     }
 }
 
+struct TrayTablet: Identifiable {
+    let medication: Medication
+    let index: Int
+    var id: String { "\(medication.id.uuidString)-\(index)" }
+    static func items(_ medications: [Medication], tray: Tray, period: DayPeriod) -> [TrayTablet] {
+        medications.flatMap { medication in
+            (0..<tray.count(medication.id, at: period)).map { TrayTablet(medication: medication, index: $0) }
+        }
+    }
+}
+
 struct FlowPills: View {
     let challenge: Challenge
     let period: DayPeriod
@@ -138,13 +149,13 @@ struct FlowPills: View {
         let total = challenge.medications.reduce(0) { $0 + challenge.tray.count($1.id, at: period) }
         if total == 0 { Text("Drop here").font(.subheadline).foregroundStyle(.secondary).frame(maxWidth: .infinity, minHeight: 70) }
         LazyVGrid(columns: [GridItem(.adaptive(minimum: 48))], spacing: 10) {
-            ForEach(challenge.medications) { m in
-                ForEach(0..<challenge.tray.count(m.id, at: period), id: \.self) { index in
-                    let expected = m.periods.contains(period) ? (m.quantity ?? 0) : 0
-                    Button { remove(m.id) } label: { PillIcon(code: m.code, error: assessed && index >= expected).frame(minHeight: 44) }
-                        .buttonStyle(.plain).disabled(challenge.locked)
-                        .accessibilityLabel("Remove one \(m.name) tablet from \(period.title)")
-                }
+            ForEach(TrayTablet.items(challenge.medications, tray: challenge.tray, period: period)) { tablet in
+                let m = tablet.medication
+                let index = tablet.index
+                let expected = m.periods.contains(period) ? (m.quantity ?? 0) : 0
+                Button { remove(m.id) } label: { PillIcon(code: m.code, error: assessed && index >= expected).frame(minHeight: 44) }
+                    .buttonStyle(.plain).disabled(challenge.locked)
+                    .accessibilityLabel("Remove one \(m.name) tablet from \(period.title)")
             }
         }
     }

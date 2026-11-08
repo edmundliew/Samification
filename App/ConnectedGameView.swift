@@ -131,12 +131,12 @@ struct ConnectedGameView: View {
         VStack {
             Button { active = period } label: { Label(period.title, systemImage: period.symbol) }.buttonStyle(.bordered).tint(active == period ? .teal : .secondary).disabled(!game.editable)
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 48))]) {
-                ForEach(meds) { m in
-                    ForEach(0..<game.tray.count(m.id, at: period), id: \.self) { i in
-                        let expected = m.periods.contains(period) ? (m.quantity ?? 0) : 0
-                        Button { game.tray.remove(m.id, at: period); game.edited() } label: { PillIcon(code: m.code, error: game.showingFeedback && i >= expected) }.disabled(!game.editable)
-                            .accessibilityLabel("Remove one \(m.name) from \(period.title)")
-                    }
+                ForEach(TrayTablet.items(meds, tray: game.tray, period: period)) { tablet in
+                    let m = tablet.medication
+                    let i = tablet.index
+                    let expected = m.periods.contains(period) ? (m.quantity ?? 0) : 0
+                    Button { game.tray.remove(m.id, at: period); game.edited() } label: { PillIcon(code: m.code, error: game.showingFeedback && i >= expected) }.disabled(!game.editable)
+                        .accessibilityLabel("Remove one \(m.name) from \(period.title)")
                 }
             }
             Spacer(minLength: 40)
