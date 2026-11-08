@@ -77,8 +77,8 @@ struct ConnectedGameView: View {
                     if game.result?.priorExposure == true { Notice(text: "A previous challenge for this regimen was started. Earlier exposure is recorded.", color: .orange) }
                     Button("Open medication reference") { Task { await game.send("reference", token: token) } }.disabled(!game.editable)
                     if game.showingReference { reference }
-                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 150))], spacing: 16) {
-                        ForEach(meds) { m in MedicationBag(medication: m, disabled: !game.editable) { game.tray.add(m.id, at: active); game.edited() } }
+                    MedicationShelf(medications: meds, disabled: !game.editable) { m in
+                        game.tray.add(m.id, at: active); game.edited()
                     }
                     VStack(alignment: .leading) {
                         Text("Your daily tray · taps add to \(active.title)").font(.headline)

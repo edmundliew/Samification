@@ -25,12 +25,8 @@ struct GameView: View {
                             }
                         }.padding(.top)
                     }.padding().background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
-                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 150), alignment: .top)], alignment: .leading, spacing: 16) {
-                        ForEach(c.medications) { m in
-                            MedicationBag(medication: m, disabled: c.locked) {
-                                store.update(c.id) { $0.add(m.id, at: activePeriod) }; edited()
-                            }
-                        }
+                    MedicationShelf(medications: c.medications, disabled: c.locked) { m in
+                        store.update(c.id) { $0.add(m.id, at: activePeriod) }; edited()
                     }
                     VStack(alignment: .leading, spacing: 12) {
                         HStack { Text("Your daily tray").font(.headline); Spacer(); Text("Taps add to \(activePeriod.title)").font(.caption) }
@@ -89,6 +85,28 @@ struct GameView: View {
                 guard !c.locked, items.count == 1, let id = UUID(uuidString: items[0]), c.medications.contains(where: { $0.id == id }) else { return false }
                 activePeriod = period; store.update(c.id) { $0.add(id, at: period) }; edited(); return true
             }
+    }
+}
+
+struct MedicationShelf: View {
+    let medications: [Medication]
+    let disabled: Bool
+    let add: (Medication) -> Void
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Label("Swipe sideways to see all medicines", systemImage: "arrow.left.arrow.right")
+                .font(.caption).foregroundStyle(.secondary)
+            ScrollView(.horizontal) {
+                HStack(alignment: .top, spacing: 12) {
+                    ForEach(medications) { medication in
+                        MedicationBag(medication: medication, disabled: disabled) { add(medication) }
+                            .frame(width: 160)
+                    }
+                }.padding(.bottom, 12)
+            }
+            .scrollIndicators(.visible)
+            .scrollIndicatorsFlash(onAppear: true)
+        }
     }
 }
 

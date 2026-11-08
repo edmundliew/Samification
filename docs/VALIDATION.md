@@ -1,3 +1,13 @@
+# Horizontal medication shelf and signing — 8 November 2026
+
+The account owner approved configuring the Yong Hock Liew Apple Developer team for this app. Xcode displayed a managed provisioning profile and an Apple Development signing certificate. Debug and Release now specify team `3T3328WVBE`; the bundle identifier remains `com.edmundliew.samification`. No signing secrets or profiles are committed. Archive creation, distribution validation and TestFlight upload remain pending; the Product menu exposed Archive as disabled during this session.
+
+Both the local and connected games now share a horizontal medication shelf. Ziplocs use fixed-width cards in one HStack inside a horizontal ScrollView, with native scroll indicators and a swipe instruction. The collection never wraps into additional rows as medicines are added. Pill tap handlers and drag providers remain on the existing buttons. The tray layout and scoring are unchanged.
+
+The change compiled and launched on iPhone 17e / iOS 27.2. Portrait visual inspection confirmed a single row with the next card partially visible. Source parsing and diff checks passed. The final build retained individually accessible medication buttons. Verified an actual sideways swipe from the C/D end back to A/B, and tapping D added Allopurinol to Morning. Native scroll indicators use system visibility behavior and may fade between gestures. Larger medication collections, larger text, landscape and connected authenticated game gestures still need device validation. The prior 43 core tests passed before these UI-only changes; they were not rerun because no scoring or transport code changed.
+
+---
+
 # iPad simulator validation — 8 November 2026
 
 - Reran the core XCTest suite: **43 tests, zero failures**.
