@@ -1,8 +1,8 @@
-## 9 November 2026 — Help guide prepared for build 0.2.0 (7)
+## 9 November 2026 — Help guide prepared for build 0.2.0 (8)
 
 Added a shared tester guide accessible from the welcome screen, clinician Help tab, patient Help tab and local demo Help. It covers one-device demo testing, clinician CSV review and assignment, exact pairing-code controls, patient play, clinician evidence and troubleshooting. It contains no passwords or live pairing codes.
 
-The new guide and its shared HelpStep component passed iOS Simulator SwiftUI type-checking. `scripts/verify.sh` passed core checks, app syntax parsing and project validation; `git diff --check` passed. A full shell-based simulator build was blocked by compiler-plugin/CoreSimulator sandbox restrictions. Native visual verification and release upload are pending access to the locked Mac. Build 6 remains the installed TestFlight release; build 7 is not claimed as uploaded.
+The new guide and its shared HelpStep component passed iOS Simulator SwiftUI type-checking. `scripts/verify.sh` passed core checks, app syntax parsing and project validation; `git diff --check` passed. A full shell-based simulator build was blocked by compiler-plugin/CoreSimulator sandbox restrictions. After the owner unlocked the Mac, native Xcode compilation succeeded and the iPad simulator displayed the patient Help tab and clinician walkthrough. Subsequent simulator/Xcode control repeatedly timed out. Full App Store-size media capture, video and archive upload remain incomplete; no successful build 8 archive/upload was observed. Build 6 remains the installed TestFlight release; build 8 is not yet claimed as uploaded.
 
 # Uploaded beta checkpoint — 9 November 2026
 
