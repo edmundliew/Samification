@@ -163,7 +163,7 @@ private struct WelcomeView: View {
                 Image(systemName: "pills.fill").font(.system(size: 44)).foregroundStyle(.teal).accessibilityHidden(true)
                 Text("Samification").font(.largeTitle.bold())
                 Text("Build confidence with your medicines.").font(.title3).foregroundStyle(.secondary)
-                entryButton("Join my care", detail: "For patients · Enter the code provided by your care team", symbol: "qrcode", action: onPatient)
+                entryButton("Play Samification", detail: "For patients · Enter the game code from your care team", symbol: "qrcode", action: onPatient)
                 entryButton("Staff sign-in", detail: "For clinicians · Access your ward and patients", symbol: "person.crop.rectangle", action: onStaff)
                 Divider()
                 Button("Try demo", systemImage: "play.circle", action: onDemo)
@@ -199,7 +199,7 @@ private struct CareHelpView: View {
         List {
             Section("Clinician → Patient → Clinician") {
                 HelpStep(number: 1, title: "Prepare", text: "Select a patient admission. Upload the medication CSV, edit names and check every dose, strength, time and direction before confirming the regimen.", symbol: "list.clipboard")
-                HelpStep(number: 2, title: "Assign and pair", text: "Assign practice or assessment, then generate a pairing code. Ask the patient to open Join my care and enter that code on their device.", symbol: "qrcode")
+                HelpStep(number: 2, title: "Assign and pair", text: "Assign practice or assessment, then generate a pairing code. Ask the patient to open Play Samification and enter that code on their device.", symbol: "qrcode")
                 HelpStep(number: 3, title: "Patient challenge", text: "The patient opens the assigned challenge, taps or drags medication images into the daily tray, checks their answer and shares the completed challenge.", symbol: "pills")
                 HelpStep(number: 4, title: "Review", text: "Open the patient's results. Inspect first-attempt accuracy, later attempts, assistance and the audit trail, then record a separate clinical review.", symbol: "chart.bar")
             }

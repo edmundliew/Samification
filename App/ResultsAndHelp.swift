@@ -164,7 +164,7 @@ struct HelpView: View {
                 Text("There is no overall qualification score. These rules need clinical validation, and clinicians make self-administration decisions under local policy.")
             }
             Section("Saved local demo") {
-                Text("Select a fictional patient in the clinician views. Each patient has a separate CSV draft, confirmed regimen history, assignments, attempts and reviews. These records are saved on this device and restored after reopening the app. Role previews and local demo delivery are simulated. Exit demo for connected access. Clinicians use Staff sign-in; new staff still need approval. Patients use Join my care with their admission pairing code. First-time account setup and password recovery still require email delivery.")
+                Text("Select a fictional patient in the clinician views. Each patient has a separate CSV draft, confirmed regimen history, assignments, attempts and reviews. These records are saved on this device and restored after reopening the app. Role previews and local demo delivery are simulated. Exit demo for connected access. Clinicians use Staff sign-in; new staff still need approval. Patients use Play Samification with their admission pairing code. First-time account setup and password recovery still require email delivery.")
                 Text("The supplied package photos are demo references. Tablet icons are illustrative. Food compliance, technique and actual medication adherence are not measured.")
             }
             Section("Demo workspace") {

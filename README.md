@@ -2,7 +2,7 @@
 
 SwiftUI iPhone/iPad medication assessment app with Supabase-backed clinician and patient workflows. Development checkpoint, 8 November 2026; use fictional data only.
 
-The app opens with **Join my care**, **Staff sign-in**, and a separate **Try demo** entry. Patients see pairing and assigned challenges only. Approved clinicians enter the Patients workspace; medication review, assignments, pairing, evidence and reviews are grouped by admission. Mobile administrator controls have been removed. The separate administrator portal is in `web/admin`; it is prepared locally and not yet deployed to Cloudflare.
+The app opens with **Play Samification**, **Staff sign-in**, and a separate **Try demo** entry. Patients see pairing and assigned challenges only. Approved clinicians enter the Patients workspace; medication review, assignments, pairing, evidence and reviews are grouped by admission. Mobile administrator controls have been removed. The separate administrator portal is in `web/admin`; it is prepared locally and not yet deployed to Cloudflare.
 
 Staff email/password sign-in and secure session restoration are implemented. First-time email verification/password setup remains unresolved for the owner's test account: the supplied link returned `otp_expired`. Valid native sign-in, restoration and the complete connected native workflow have not yet been verified. The owner already has administrator and clinician access scoped to the fictional test ward. Backend migrations for staff access, clinical workflow, patient pairing and assessment evidence are deployed.
 

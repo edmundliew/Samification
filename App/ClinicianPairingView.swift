@@ -23,7 +23,7 @@ struct ClinicianPairingView: View {
                     Text(pairing.token).font(.caption.monospaced()).textSelection(.enabled)
                     Text("Code expires: \(pairing.expires_at)").font(.caption)
                     Button("Copy pairing code") { UIPasteboard.general.setItems([[UIPasteboard.typeAutomatic: pairing.token]], options: [.localOnly: true, .expirationDate: Date().addingTimeInterval(900)]) }
-                    Text("On the patient device, open Join my care and paste the code. This preview displays the QR for the scanning step to be connected later.").font(.caption)
+                    Text("On the patient device, open Play Samification and paste the code. This preview displays the QR for the scanning step to be connected later.").font(.caption)
                 }
             }
             Section("Patient sessions") {

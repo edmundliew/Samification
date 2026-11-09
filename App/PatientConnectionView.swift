@@ -62,7 +62,7 @@ struct PatientConnectionView: View {
     var body: some View {
         @Bindable var connection = connection
         List {
-            Section { Notice(text: "Use the pairing code provided by your care team. No email or staff sign-in is needed. Development build: fictional admissions only.") }
+            Section { Notice(text: "Use the game code provided by your care team. No email or staff sign-in is needed. Development build: fictional admissions only.") }
             if !connection.configured {
                 Section { Text("Patient connection is not configured in this build.") }
             } else if connection.paired {
@@ -84,15 +84,15 @@ struct PatientConnectionView: View {
                     }
                 }
             } else {
-                Section("Join your admission") {
-                    TextField("Paste pairing code", text: $connection.code).textInputAutocapitalization(.never).autocorrectionDisabled()
-                    Button("Connect to my admission") { Task { await connection.join() } }.disabled(!connection.validCode)
-                    Text("Pairing codes expire after 15 minutes and can be used by one patient identity. Ask your clinician if the code has expired.").font(.caption)
+                Section("Enter your game code") {
+                    TextField("Game code", text: $connection.code).textInputAutocapitalization(.never).autocorrectionDisabled()
+                    Button("Continue") { Task { await connection.join() } }.disabled(!connection.validCode)
+                    Text("Game codes expire after 15 minutes and can be used by one patient identity. Ask your clinician if the code has expired.").font(.caption)
                 }
             }
             if let notice = connection.notice { Section { Notice(text: notice, color: .red) } }
             if connection.busy { ProgressView("Connecting…") }
-        }.disabled(connection.busy).navigationTitle(connection.paired ? "My challenges" : "Join my care")
+        }.disabled(connection.busy).navigationTitle(connection.paired ? "My challenges" : "Play Samification")
             .onChange(of: scenePhase) { _, phase in
                 if phase == .active && connection.paired { Task { await connection.refresh() } }
                 else if phase != .active { connection.inbox = []; connection.expiration = nil; connection.games.values.forEach { $0.invalidate() } }

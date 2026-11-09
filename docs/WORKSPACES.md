@@ -2,7 +2,7 @@
 
 ## Mobile entry
 
-- **Join my care**: patient pairing, then that admission’s assigned challenges. No staff account tab, clinician tabs, or role selector.
+- **Play Samification**: patient pairing, then that admission’s assigned challenges. No staff account tab, clinician tabs, or role selector.
 - **Staff sign-in**: email/password and existing account setup. An authenticated user without active clinician membership stays at access/request status. Active clinicians open Patients, Account and Help. Admissions contain medication review, assignments, patient pairing, results and clinical reviews.
 - **Try demo**: explicitly fictional, local-only clinician/patient previews. No connected account, pairing or administrator tabs. Exit demo returns to the entry screen. The medication game remains unchanged.
 
