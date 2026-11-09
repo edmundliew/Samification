@@ -1,38 +1,32 @@
-# App Review preparation — 9 November 2026
+# App Review and TestFlight — 9 November 2026
 
-Status: NOT uploaded or submitted. Reviewer Auth identity was created by the owner and is visible in Supabase (UUID 000feccd-c980-4f58-ba32-fb2dd63233fa). Its scoped clinician grant and fictional sample fixtures were applied after explicit owner approval. The result showed only active clinician access to App Review Ward (fictional only). App Store Connect browser sign-in is confirmed. The owner accepted Apple’s updated Developer Program License Agreement; the pending-agreement notice is no longer shown.
+## Current release
 
-## Dedicated review identity
+**Samification 0.2.0 (6)** passed Apple validation and Xcode confirmed **App upload complete**. App Store Connect confirms **Testing** in **Samification Internal** (1 tester, 1 build). The owner account is the internal tester. Public App Store submission has not occurred.
 
-Prepared login: `app-review@samification.example` (a reserved, non-deliverable dummy identifier, not a mailbox). Password must be unique, entered privately by the owner and provided to Apple only in App Store Connect’s review credentials. Never put passwords or Auth tokens in Git, logs or public metadata. The review account must remain active through review. It has no administrator access.
+Apple app ID: `6832386816`. Bundle: `com.edmundliew.samification`. Team: `3T3328WVBE` (Yong Hock Liew). The owner accepted the updated Developer Program License Agreement. The private App Review Information username/password fields and patient/clinician review notes were saved. No passwords or session tokens are stored in this repository.
 
-Applied after owner approval: `supabase/admin/provision-app-review.sql`. Creates an isolated fictional review ward and grants only that ward's clinician role, with an owner-approved audit reason. It seeds one fictional admission, a four-medication confirmed regimen and a practice assignment using existing controlled RPCs. No synthetic completed assessment or clinical eligibility decision is seeded. It required action-time approval and an already-created Auth identity. It must never use a ward containing real patient records.
+## Review account and data
 
-## Draft reviewer instructions (verify before submission)
+Dedicated login: `app-review@samification.example`, an owner-created dummy identity without a mailbox. Its password belongs only in Apple's private review credentials. It has active clinician access only to **App Review Ward (fictional only)** and no administrator access, following explicit owner approval recorded in the access audit.
 
-1. Open Staff sign-in and use the dedicated review credentials in App Review Information.
-2. Open Patients → APPLE-REVIEW-001 · Fictional patient.
-3. Inspect the confirmed regimen, assign a challenge, and generate a fresh pairing code.
-4. On a second device open Play Samification and enter the code. Codes expire after 15 minutes; generate at review time, never provide an old code in notes.
-5. Open the assigned challenge, use the medication reference, tap or drag medication images into time compartments, check the tray, try hints after an error, then share results.
-6. Return to the clinician admission to inspect evidence and record a review. The app does not automatically qualify patients for self-administration.
-7. For a single-device walkthrough, return to the welcome page and select Try demo. This is explicitly fictional local data and includes clinician/patient previews; it is not an authentication bypass into connected records.
+Fictional admission: **APPLE-REVIEW-001**. Regimen v2 retains the same four fictional medication examples. The earlier v1 pending challenge was superseded through the controlled confirmation API; evidence was preserved. A v2 practice challenge was completed in native testing. Reviewers can assign a fresh challenge from the clinician admission before issuing a new patient game code.
 
-Valid native staff login and Keychain session restoration were observed: the reviewer reached Patients with only the fictional review ward and opened its seeded admission. The optional-display-field decoder mismatch was fixed; 50 core tests pass, including required-field rejection. An iPad patient paired to the fictional admission using a clinician-issued game code, received the four-medicine practice challenge and opened it. Attempt saving, final evidence, clinician result retrieval and upload validation are still being verified. The Mac locked during the test; no completion or upload is claimed. A permanent patient code is not implemented and will not be introduced by weakening pairing expiry.
+## Verified workflow
 
-## Current release findings
+- Native clinician login/session restoration, fictional ward/admission/regimen access and game-code issuance.
+- Native iPad pairing and four-medication challenge delivery.
+- Incorrect first tray saved; one hint requested; correct second tray saved; Finish & share locked the challenge.
+- Native clinician evidence matched: first attempt incorrect, submissions 2, retries 1, first correct attempt 2, hints 1. Attempt 2 had dose 4/4 and schedule 4/4, with zero unexpected placements/omissions. Audit showed start → submit → hint → submit → finish.
+- **56 core tests pass**, including optional medication display-field compatibility, mandatory answer-key rejection, expiry policy, coalesced renewal, same-identity enforcement, invalid-refresh rejection and invalidation during renewal.
+- Original opaque 1024px tray icon, AppIcon build configuration, UserDefaults privacy reason CA92.1, and OS-only encryption declaration were included in the validated build.
 
-- First Native Release archive attempt failed at CodeSign with `errSecInternalComponent`. A later Xcode retry succeeded: Organizer shows an arm64 iOS App Archive, version 0.2.0 (2), identifier com.edmundliew.samification, team Yong Hock Liew. App Store validation is in progress; archive creation alone does not prove upload readiness.
-- App Store Connect app record is Samification, Apple ID 6832386816, bundle com.edmundliew.samification. The exact bundle ID is already registered under team 3T3328WVBE. Searching the Apps list by name located the record. Private reviewer sign-in fields and instructions were saved in App Review Information; no password is stored in this repository.
-- Archive 0.2.0 (2) failed Apple validation for missing iPhone/iPad app icons and CFBundleIconName. Added an original opaque 1024px tray icon and AppIcon asset-catalog build setting. Archive (3) exists but predates the latest wording/decoder fix. Current source is 0.2.0 build 4 and needs a fresh archive/validation. Added UserDefaults reason CA92.1 privacy manifest and ITSAppUsesNonExemptEncryption=false: app uses Apple URLSession HTTPS/Keychain only, no custom crypto dependencies. Public listing privacy/support URLs, disclosures, screenshots, review contact details, age rating and account-deletion support remain incomplete. TestFlight upload and internal testing take priority before public submission.
-- Owner's earlier email link returned otp_expired. The separate review account must prove valid password login and secure session restoration independently.
+Native patient workflow was exercised on build 5; build 6 additionally includes clinician preflight renewal and the shared equivalent expiry policy. Build 6 was archived, Apple-validated and uploaded. Real-device installation through TestFlight is the next verification.
 
-## Current checkpoint and next action
+## Session behavior and limits
 
-App Review Information was saved in App Store Connect under Apple app ID 6832386816. Reload shows nonempty protected reviewer credential fields and version 0.2.0. The username and password are intentionally excluded from this repository's notes beyond the non-secret reviewer email. Use Apple’s private sign-in fields, never public metadata, to supply the password.
+Patient Auth credentials remain memory-only. Renewal preserves the same anonymous identity; it does not extend or bypass admission pairing expiry/revocation. Each protected request remains server-authorized. Patient requests retry one Auth-expiry response using the same pending action identifier. Staff actions renew ahead of expiry; unexpected Auth expiry renews sign-in and asks the user to retry, rather than replaying an entire clinical workflow automatically.
 
-Current source build: **0.2.0 (4)**. Xcode successfully ran the corrected decoder on iPhone and built/installed on iPad. Native iPhone restored the signed-in clinician session, loaded its one review admission and current regimen, and issued a patient pairing code. Native iPad joined that admission, received its practice assignment and opened the medication game. Debugger startup stalled during installation; direct app launch after installation worked. Build 4 Archive was started and reached 65/71 steps before the Mac locked; its final archive/validation status must be checked after unlock.
+During a long test a patient session reported expired sign-in, and a server-only submission reproduced successfully inside a rolled-back transaction. The exact cause of the earlier generic rejected action was not captured conclusively. No scoring or authorization checks were relaxed.
 
-All **50 Swift core tests passed**. New tests verify backend snapshots can omit display/provenance fields without weakening mandatory answer-key fields. Dose, strength, periods, identity, inclusion and confirmation remain mandatory; malformed supplied display fields still fail decoding. The 1024px original icon was visually inspected and verified opaque. Both plist files and the generated Xcode project passed plist validation. No distribution upload, TestFlight release or public review submission has been verified.
-
-Next: unlock Mac; finish native patient submission/share and clinician evidence check; archive/validate current build 4; upload to App Store Connect; wait for processing; enable internal TestFlight for the account owner. Complete public listing/privacy/review requirements before any public App Store submission. Keep App Store review credentials private and keep reviewer access confined to fictional records.
+Cold restart of the patient app still requires clinician re-pairing; a previously started challenge remains bound to its original temporary identity. Physical-device drag gestures, larger text/VoiceOver and native saving of a separate clinical review remain items for beta testing. Public listing support/privacy URLs, disclosures, screenshots, review contact details, age rating and deletion/retention procedures remain incomplete and must be resolved before public App Store review.

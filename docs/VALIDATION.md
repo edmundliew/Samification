@@ -1,3 +1,7 @@
+# Uploaded beta checkpoint — 9 November 2026
+
+**56 core tests passed. Build 0.2.0 (6) passed Apple validation and uploaded successfully.** The connected native patient/clinician evidence test passed with the isolated fictional ward: wrong attempt → hint → correct retry → finish, followed by matching clinician counts and audit history. App Store Connect confirms build 0.2.0 (6) is **Testing** in **Samification Internal**, with one tester and one build. See [APP_REVIEW.md](APP_REVIEW.md) for exact build/test scope and remaining limits. Earlier checkpoints below are historical.
+
 # Release preparation — 9 November 2026
 
 **50 core tests pass.** Fixed native decoding of backend-confirmed medication snapshots that omit optional display/provenance fields; answer-key fields remain required and malformed fields are rejected. Native clinician sign-in/session restoration, admission/regimen loading, patient-code issuance, iPad pairing and challenge delivery were observed with the isolated fictional reviewer ward. Full patient submission/clinician results and final archive validation remain pending. See [APP_REVIEW.md](APP_REVIEW.md) for the release checkpoint. Mac lock interrupted UI checks; no upload or TestFlight release is claimed.

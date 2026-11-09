@@ -58,18 +58,37 @@ private enum StaffSessionVault {
     var administrator: Bool { memberships.contains { $0.user_id == session?.user.id && $0.role == "administrator" && $0.active } }
     var clinician: Bool { memberships.contains { $0.user_id == session?.user.id && $0.role == "clinician" && $0.active } }
     var emailValid: Bool { email.contains("@") && email.count <= 254 && !email.contains(where: \.isWhitespace) }
-    func perform(_ action: @escaping (StaffAccessClient) async throws -> Void) async {
+    func perform(refreshAuthentication: Bool = true, _ action: @escaping (StaffAccessClient) async throws -> Void) async {
         guard !busy else { return }
         guard let client else { notice = StaffAPIError.configuration.localizedDescription; failed = true; return }
         busy = true; notice = nil; failed = false
         defer { busy = false }
-        do { try await action(client) }
-        catch {
-            if case StaffAPIError.authentication = error { clearSession() }
-            if case StaffAuthError.invalidRefresh = error { clearSession() }
-            notice = (error as? StaffAPIError)?.localizedDescription ?? (error as? StaffAuthError)?.localizedDescription ?? (error as? StaffSessionVault.VaultError)?.localizedDescription ?? "Unable to read the service response. Please try again."
+        do {
+            if refreshAuthentication, session?.needsRenewal() == true { try await renewAuthentication(client) }
+            try await action(client)
+        } catch {
+            var failure = error
+            if refreshAuthentication, case StaffAPIError.authentication = error, session != nil {
+                do {
+                    try await renewAuthentication(client)
+                    notice = "Sign-in renewed. Please retry your action; check its latest status before saving again."
+                    failed = true; return
+                } catch { failure = error }
+            }
+            if case StaffAPIError.authentication = failure { clearSession() }
+            if case StaffAuthError.invalidRefresh = failure { clearSession() }
+            notice = (failure as? StaffAPIError)?.localizedDescription ?? (failure as? StaffAuthError)?.localizedDescription ?? (failure as? StaffSessionVault.VaultError)?.localizedDescription ?? "Unable to read the service response. Please try again."
             failed = true
         }
+    }
+    private func renewAuthentication(_ client: StaffAccessClient) async throws {
+        guard let saved = session, let refresh = saved.refresh_token else { throw StaffAPIError.authentication }
+        let value = try await client.refreshSession(refreshToken: refresh)
+        guard value.user.id == saved.user.id else {
+            try? await client.signOut(token: value.access_token)
+            throw StaffAPIError.authentication
+        }
+        try StaffSessionVault.save(value); session = value
     }
     private func accept(_ value: StaffSession, client: StaffAccessClient) async throws {
         try StaffSessionVault.save(value)
@@ -93,7 +112,7 @@ private enum StaffSessionVault {
         guard !busy else { return }
         do {
             guard let saved = try StaffSessionVault.load(), let refresh = saved.refresh_token else { return }
-            await perform { client in
+            await perform(refreshAuthentication: false) { client in
                 let value = try await client.refreshSession(refreshToken: refresh)
                 guard value.user.id == saved.user.id else {
                     try? await client.signOut(token: value.access_token)
@@ -106,9 +125,10 @@ private enum StaffSessionVault {
         } catch { restoreFailed = true; failed = true; notice = "Unable to restore saved sign-in. Unlock the device and try again." }
     }
     func savePassword() async {
-        guard let token = session?.access_token, newPassword == confirmPassword, newPassword.count >= 12 else { return }
+        guard session != nil, newPassword == confirmPassword, newPassword.count >= 12 else { return }
         let value = newPassword; newPassword = ""; confirmPassword = ""
         await perform { client in
+            guard let token = self.session?.access_token else { throw StaffAPIError.authentication }
             try await client.setPassword(value, token: token)
             self.notice = "Password saved. Next time, sign in with your email and password."
         }
@@ -168,29 +188,30 @@ private enum StaffSessionVault {
     }
 
     func requestAccess() async {
-        guard let token = session?.access_token, let scope = selectedScope else { return }
+        guard let scope = selectedScope else { return }
         await perform { client in
+            guard let token = self.session?.access_token else { throw StaffAPIError.authentication }
             try await client.requestAccess(scope: scope, name: self.name.trimmingCharacters(in: .whitespacesAndNewlines), token: token)
             try await self.load(client); self.notice = "Access request submitted for administrator review."
         }
     }
     func decide(_ id: UUID, approve: Bool) async {
-        guard let token = session?.access_token else { return }
         await perform { client in
+            guard let token = self.session?.access_token else { throw StaffAPIError.authentication }
             try await client.decide(requestID: id, approve: approve, reason: self.reason, token: token)
             try await self.load(client); self.reason = ""; self.notice = "Decision recorded."
         }
     }
     func setAccess(_ membership: StaffMembership) async {
-        guard let token = session?.access_token else { return }
         await perform { client in
+            guard let token = self.session?.access_token else { throw StaffAPIError.authentication }
             try await client.setAccess(membershipID: membership.id, enabled: !membership.active, reason: self.reason, token: token)
             try await self.load(client); self.reason = ""; self.notice = "Access change recorded."
         }
     }
     func signOut() async {
         guard let token = session?.access_token else { return }
-        await perform { client in
+        await perform(refreshAuthentication: false) { client in
             defer { self.clearSession() }
             try await client.signOut(token: token)
         }

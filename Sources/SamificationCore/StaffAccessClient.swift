@@ -7,7 +7,12 @@ public struct StaffSession: Codable, Sendable {
     public struct User: Codable, Sendable { public let id: UUID; public let email: String? }
     public let access_token: String
     public let refresh_token: String?
+    public let expires_at: TimeInterval?
     public let user: User
+    public func needsRenewal(at now: Date = Date()) -> Bool {
+        guard let expires_at else { return true }
+        return expires_at <= now.timeIntervalSince1970 + 60
+    }
 }
 public struct CareScope: Decodable, Identifiable, Sendable { public let id: UUID; public let name: String; public let active: Bool }
 public struct StaffMembership: Decodable, Identifiable, Sendable {

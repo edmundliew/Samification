@@ -4,9 +4,9 @@ SwiftUI iPhone/iPad medication assessment app with Supabase-backed clinician and
 
 The app opens with **Play Samification**, **Staff sign-in**, and a separate **Try demo** entry. Patients see pairing and assigned challenges only. Approved clinicians enter the Patients workspace; medication review, assignments, pairing, evidence and reviews are grouped by admission. Mobile administrator controls have been removed. The separate administrator portal is in `web/admin`; it is prepared locally and not yet deployed to Cloudflare.
 
-Staff email/password sign-in and secure session restoration are implemented. First-time email verification/password setup remains unresolved for the owner's test account: the supplied link returned `otp_expired`. Valid native sign-in, restoration and the complete connected native workflow have not yet been verified. The owner already has administrator and clinician access scoped to the fictional test ward. Backend migrations for staff access, clinical workflow, patient pairing and assessment evidence are deployed.
+Staff email/password sign-in and secure session restoration are implemented. First-time email verification/password setup remains unresolved for the owner's test account: the supplied link returned `otp_expired`. The dedicated fictional reviewer login, staff restoration, patient pairing/challenge completion and clinician evidence retrieval have now been verified. Patient/staff token renewal is implemented with same-identity checks; 56 core tests pass. The owner already has administrator and clinician access scoped to the fictional test ward. Backend migrations for staff access, clinical workflow, patient pairing and assessment evidence are deployed.
 
-The isolated demo retains CSV review, four preconfirmed fictional medicines, clinician/patient previews, the visual tray game and results. Role previews never authorize connected access. See [workspace design and validation](docs/WORKSPACES.md), [validation](docs/VALIDATION.md), and [portal setup](web/admin/README.md). No App Store or TestFlight publication has occurred.
+The isolated demo retains CSV review, four preconfirmed fictional medicines, clinician/patient previews, the visual tray game and results. Role previews never authorize connected access. See [workspace design and validation](docs/WORKSPACES.md), [validation](docs/VALIDATION.md), and [portal setup](web/admin/README.md). Build 0.2.0 (6) passed Apple validation and is **Testing** in the **Samification Internal** TestFlight group. Public App Store submission has not occurred.
 
 ## Open and run
 
@@ -56,4 +56,4 @@ See [connected workflow and pairing validation](docs/CONNECTED_WORKFLOW.md) for 
 
 ### Connected assessment development
 
-The development branch now includes server-scored patient challenges, immutable submission history and scoped clinician reviews. See [assessment evidence](docs/ASSESSMENT_EVIDENCE.md). Migration 004 is deployed and its seven live checks passed; this is not yet a TestFlight release.
+The development branch now includes server-scored patient challenges, immutable submission history and scoped clinician reviews. See [assessment evidence](docs/ASSESSMENT_EVIDENCE.md). Migration 004 is deployed and its seven live checks passed. Build 0.2.0 (6) is released to internal TestFlight.

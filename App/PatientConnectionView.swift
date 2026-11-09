@@ -4,6 +4,7 @@ import Observation
 @MainActor @Observable final class PatientConnectionStore {
     var code = ""
     var session: StaffSession?
+    @ObservationIgnored private var sessionProvider: PatientSessionProvider?
     var paired = false
     var inbox: [PatientInboxEntry] = []
     var games: [UUID: ConnectedGameStore] = [:]
@@ -20,40 +21,68 @@ import Observation
         busy = true; notice = nil; defer { busy = false }
         do { try await action(client) }
         catch {
-            if case StaffAPIError.authentication = error { session = nil; paired = false; inbox = []; games = [:]; expiration = nil }
+            if case StaffAPIError.authentication = error { await clearConnection() }
             notice = (error as? StaffAPIError)?.localizedDescription ?? error.localizedDescription
         }
     }
     func join() async {
         guard validCode else { return }
         await perform { client in
-            if self.session == nil { self.session = try await client.beginPatientSession() }
-            guard let token = self.session?.access_token else { throw StaffAPIError.authentication }
-            _ = try await client.claimPairing(code: self.code, token: token)
+            if self.session == nil {
+                let value = try await client.beginPatientSession()
+                self.session = value; self.sessionProvider = PatientSessionProvider(session: value, client: client)
+            }
+            _ = try await self.withSession { client, token in try await client.claimPairing(code: self.code, token: token) }
             self.paired = true; self.code = ""
             try await self.load(client)
         }
     }
     func refresh() async { await perform { try await self.load($0) } }
+    // Retry an expired Auth token once using the same operation/request ID.
+    // Invalid/expired admission grants still fail at the server after renewal.
+    func withSession<T>(_ operation: (StaffAccessClient, String) async throws -> T) async throws -> T {
+        guard let provider = sessionProvider, let client = BackendConfiguration.client() else { throw StaffAPIError.authentication }
+        do {
+            let value = try await provider.current(); session = value
+            do { return try await operation(client, value.access_token) }
+            catch StaffAPIError.authentication {
+                let renewed = try await provider.current(forceRefresh: true); session = renewed
+                return try await operation(client, renewed.access_token)
+            }
+        } catch StaffAuthError.invalidRefresh {
+            await clearConnection(); throw StaffAPIError.authentication
+        } catch StaffAPIError.authentication {
+            await clearConnection(); throw StaffAPIError.authentication
+        }
+    }
+    private func clearConnection() async {
+        await sessionProvider?.invalidate(); sessionProvider = nil
+        session = nil; paired = false; inbox = []; games.values.forEach { $0.invalidate() }; games = [:]; expiration = nil; code = ""
+    }
     private func load(_ client: StaffAccessClient) async throws {
         inbox = []; expiration = nil
-        guard let session else { throw StaffAPIError.authentication }
-        let active = try await client.currentPatientSessions(userID: session.user.id, token: session.access_token)
-        guard let record = active.first else {
-            paired = false; self.session = nil
-            throw WorkflowError.invalid("This patient session is no longer active. Ask your clinician for a new pairing session.")
+        let records = try await withSession { client, token in
+            guard let userID = self.session?.user.id else { throw StaffAPIError.authentication }
+            return try await client.currentPatientSessions(userID: userID, token: token)
         }
-        expiration = record.expires_at
-        inbox = try await client.patientInbox(token: session.access_token)
+        guard let active = records.first else {
+            await clearConnection()
+            throw WorkflowError.invalid("This patient session is no longer active. Ask your clinician for a new game code.")
+        }
+        let entries = try await withSession { client, token in try await client.patientInbox(token: token) }
+        expiration = active.expires_at; inbox = entries
     }
+
     func leave() async {
         await perform { client in
-            guard let token = self.session?.access_token else { return }
-            try await client.endPatientSession(token: token)
-            self.session = nil; self.paired = false; self.inbox = []; self.games = [:]; self.expiration = nil; self.code = ""
+            let token = try await self.withSession { client, token in
+                try await client.endPatientSession(token: token); return token
+            }
+            await self.clearConnection()
             try await client.signOut(token: token)
         }
     }
+
 }
 
 struct PatientConnectionView: View {
@@ -76,8 +105,8 @@ struct PatientConnectionView: View {
                     ForEach(connection.inbox) { entry in
                         DisclosureGroup("\(entry.patient_alias) · regimen v\(entry.regimen_version)") {
                             Text(entry.practice ? "Practice" : "Assessment").font(.caption)
-                            if let token = connection.session?.access_token {
-                                NavigationLink("Open medication challenge") { ConnectedGameView(game: connection.game(for: entry), token: token) }
+                            if connection.session != nil {
+                                NavigationLink("Open medication challenge") { ConnectedGameView(game: connection.game(for: entry), connection: connection) }
                             }
                             Text("\(entry.medications.count) medicines. Open the challenge to request your medication reference.").font(.caption)
                         }
