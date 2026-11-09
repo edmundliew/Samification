@@ -51,7 +51,7 @@ for config in ['Debug', 'Release']:
         'SUPPORTED_PLATFORMS': 'iphoneos iphonesimulator', 'SUPPORTS_MACCATALYST': 'NO',
         'INFOPLIST_KEY_UISupportedInterfaceOrientations': 'UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight',
         'INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad': 'UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight',
-        'MARKETING_VERSION': '0.2.0', 'CURRENT_PROJECT_VERSION': '6', 'CODE_SIGN_STYLE': 'Automatic', 'DEVELOPMENT_TEAM': '3T3328WVBE',
+        'MARKETING_VERSION': '0.2.0', 'CURRENT_PROJECT_VERSION': '7', 'CODE_SIGN_STYLE': 'Automatic', 'DEVELOPMENT_TEAM': '3T3328WVBE',
         'ASSETCATALOG_COMPILER_APPICON_NAME': 'AppIcon',
         'LD_RUNPATH_SEARCH_PATHS': '$(inherited) @executable_path/Frameworks',
         'ENABLE_PREVIEWS': 'YES',

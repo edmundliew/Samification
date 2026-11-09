@@ -117,9 +117,13 @@ struct RootView: View {
                                 onStaff: { entryValue = AppEntry.staff.rawValue },
                                 onDemo: { entryValue = AppEntry.demo.rawValue })
                 case .patient:
-                    NavigationStack {
-                        PatientConnectionView(connection: connection)
-                            .toolbar { if !connection.paired { ToolbarItem(placement: .topBarLeading) { Button("Back") { entryValue = AppEntry.welcome.rawValue } } } }
+                    TabView {
+                        NavigationStack {
+                            PatientConnectionView(connection: connection)
+                                .toolbar { if !connection.paired { ToolbarItem(placement: .topBarLeading) { Button("Back") { entryValue = AppEntry.welcome.rawValue } } } }
+                        }.tabItem { Label("Play", systemImage: "pills") }
+                        NavigationStack { TesterHelpView() }
+                            .tabItem { Label("Help", systemImage: "questionmark.circle") }
                     }
                 case .staff:
                     if account.clinician {
@@ -157,6 +161,7 @@ private struct WelcomeView: View {
     let onPatient: () -> Void
     let onStaff: () -> Void
     let onDemo: () -> Void
+    @State private var showingHelp = false
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
@@ -168,8 +173,15 @@ private struct WelcomeView: View {
                 Divider()
                 Button("Try demo", systemImage: "play.circle", action: onDemo)
                 Text("Explore with fictional records. No sign-in or pairing code needed.").font(.caption).foregroundStyle(.secondary)
+                Button("Help · Start here", systemImage: "questionmark.circle") { showingHelp = true }
                 Text("Development build · Use fictional data only").font(.caption).foregroundStyle(.secondary)
             }.padding(28).frame(maxWidth: 540, alignment: .leading).frame(maxWidth: .infinity)
+        }
+        .sheet(isPresented: $showingHelp) {
+            NavigationStack {
+                TesterHelpView()
+                    .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { showingHelp = false } } }
+            }
         }
     }
     private func entryButton(_ title: String, detail: String, symbol: String, action: @escaping () -> Void) -> some View {
@@ -189,25 +201,8 @@ private struct ClinicianWorkspaceView: View {
         TabView(selection: $selectedTab) {
             NavigationStack { ConnectedClinicalView(account: account) }.tabItem { Label("Patients", systemImage: "person.2") }.tag("patients")
             NavigationStack { StaffAccountView(account: account) }.tabItem { Label("Account", systemImage: "person.crop.circle") }.tag("account")
-            NavigationStack { CareHelpView() }.tabItem { Label("Help", systemImage: "questionmark.circle") }.tag("help")
+            NavigationStack { TesterHelpView() }.tabItem { Label("Help", systemImage: "questionmark.circle") }.tag("help")
         }
-    }
-}
-
-private struct CareHelpView: View {
-    var body: some View {
-        List {
-            Section("Clinician → Patient → Clinician") {
-                HelpStep(number: 1, title: "Prepare", text: "Select a patient admission. Upload the medication CSV, edit names and check every dose, strength, time and direction before confirming the regimen.", symbol: "list.clipboard")
-                HelpStep(number: 2, title: "Assign and pair", text: "Assign practice or assessment, then generate a pairing code. Ask the patient to open Play Samification and enter that code on their device.", symbol: "qrcode")
-                HelpStep(number: 3, title: "Patient challenge", text: "The patient opens the assigned challenge, taps or drags medication images into the daily tray, checks their answer and shares the completed challenge.", symbol: "pills")
-                HelpStep(number: 4, title: "Review", text: "Open the patient's results. Inspect first-attempt accuracy, later attempts, assistance and the audit trail, then record a separate clinical review.", symbol: "chart.bar")
-            }
-            Section("Access") {
-                Text("New clinician accounts require administrator approval for a ward. Patient pairing provides access to the paired admission only. Administrator controls belong in the separate web portal.")
-                Text("The game does not automatically qualify a patient for medication self-administration. Clinical review and local policy remain required.")
-            }
-        }.navigationTitle("Help")
     }
 }
 

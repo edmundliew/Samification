@@ -139,6 +139,10 @@ struct HelpView: View {
     @State private var confirmingRestart = false
     var body: some View {
         List {
+            Section {
+                NavigationLink("Tester guide · Start here", systemImage: "questionmark.circle") { TesterHelpView() }
+                Text("Use the tester guide for connected clinician and patient steps. The walkthrough below is for the local demo.").font(.caption).foregroundStyle(.secondary)
+            }
             Section("Clinician → Patient → Clinician") {
                 HelpStep(number: 1, title: "Prepare", text: "Upload a CSV, review medication names, doses, strengths and day periods, then confirm the regimen. The four fictional demo medicines are preconfirmed on launch.", symbol: "list.clipboard")
                 HelpStep(number: 2, title: "Assign", text: "In the clinician preview, open Assign. Select a fictional patient, choose assessment or practice and press Assign. Then open the patient preview.", symbol: "paperplane")

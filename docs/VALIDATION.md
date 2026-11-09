@@ -1,3 +1,9 @@
+## 9 November 2026 — Help guide prepared for build 0.2.0 (7)
+
+Added a shared tester guide accessible from the welcome screen, clinician Help tab, patient Help tab and local demo Help. It covers one-device demo testing, clinician CSV review and assignment, exact pairing-code controls, patient play, clinician evidence and troubleshooting. It contains no passwords or live pairing codes.
+
+The new guide and its shared HelpStep component passed iOS Simulator SwiftUI type-checking. `scripts/verify.sh` passed core checks, app syntax parsing and project validation; `git diff --check` passed. A full shell-based simulator build was blocked by compiler-plugin/CoreSimulator sandbox restrictions. Native visual verification and release upload are pending access to the locked Mac. Build 6 remains the installed TestFlight release; build 7 is not claimed as uploaded.
+
 # Uploaded beta checkpoint — 9 November 2026
 
 **56 core tests passed. Build 0.2.0 (6) passed Apple validation and uploaded successfully.** The connected native patient/clinician evidence test passed with the isolated fictional ward: wrong attempt → hint → correct retry → finish, followed by matching clinician counts and audit history. App Store Connect confirms build 0.2.0 (6) is **Testing** in **Samification Internal**, with one tester and one build. See [APP_REVIEW.md](APP_REVIEW.md) for exact build/test scope and remaining limits. Earlier checkpoints below are historical.
