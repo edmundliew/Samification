@@ -67,3 +67,30 @@ final class ClinicalClientTests: XCTestCase {
         XCTAssertEqual(requests[0].value(forHTTPHeaderField: "Authorization"), "Bearer test")
     }
 }
+
+final class MedicationSnapshotCompatibilityTests: XCTestCase {
+    private var snapshot: [String: Any] {
+        ["id": "a447ba2e-78fd-4c1b-9a61-8f21a395d101", "code": "A", "name": "Fictional tablet",
+         "originalName": "Fictional tablet", "doseMG": 10, "strengthMG": 10,
+         "periods": ["bedtime"], "included": true, "confirmed": true]
+    }
+    func testServerSnapshotWithoutOptionalDisplayFieldsDecodes() throws {
+        let med = try JSONDecoder().decode(Medication.self, from: JSONSerialization.data(withJSONObject: snapshot))
+        XCTAssertEqual(med.quantity, 1)
+        XCTAssertEqual(med.periods, [.bedtime])
+        XCTAssertEqual(med.directions, "")
+        XCTAssertEqual(med.sourceDetails, "")
+        XCTAssertEqual(med.sourceRow, 0)
+        XCTAssertNil(med.visibleImage)
+        XCTAssertTrue(med.issues.isEmpty)
+        XCTAssertEqual(try JSONDecoder().decode(Medication.self, from: JSONEncoder().encode(med)), med)
+    }
+    func testMissingAnswerKeyFieldsAndWrongDisplayTypesAreRejected() throws {
+        for key in ["id", "code", "name", "originalName", "doseMG", "strengthMG", "periods", "included", "confirmed"] {
+            var incomplete = snapshot; incomplete.removeValue(forKey: key)
+            XCTAssertThrowsError(try JSONDecoder().decode(Medication.self, from: JSONSerialization.data(withJSONObject: incomplete)), key)
+        }
+        var wrong = snapshot; wrong["directions"] = 42
+        XCTAssertThrowsError(try JSONDecoder().decode(Medication.self, from: JSONSerialization.data(withJSONObject: wrong)))
+    }
+}

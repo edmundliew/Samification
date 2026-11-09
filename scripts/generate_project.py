@@ -23,11 +23,14 @@ for path in sources:
 assets = obj('assets', {'isa': 'PBXFileReference', 'lastKnownFileType': 'folder.assetcatalog', 'path': 'App/Assets.xcassets', 'sourceTree': '<group>'})
 children.append(assets)
 asset_build = obj('asset-build', {'isa': 'PBXBuildFile', 'fileRef': assets})
+privacy = obj('privacy', {'isa': 'PBXFileReference', 'lastKnownFileType': 'text.xml', 'path': 'App/PrivacyInfo.xcprivacy', 'sourceTree': '<group>'})
+children.append(privacy)
+privacy_build = obj('privacy-build', {'isa': 'PBXBuildFile', 'fileRef': privacy})
 product = obj('product', {'isa': 'PBXFileReference', 'explicitFileType': 'wrapper.application', 'path': 'Samification.app', 'sourceTree': 'BUILT_PRODUCTS_DIR'})
 products = obj('products', {'isa': 'PBXGroup', 'name': 'Products', 'children': [product], 'sourceTree': '<group>'})
 main = obj('main', {'isa': 'PBXGroup', 'children': children + [products], 'sourceTree': '<group>'})
 source_phase = obj('sources', {'isa': 'PBXSourcesBuildPhase', 'buildActionMask': 2147483647, 'files': builds, 'runOnlyForDeploymentPostprocessing': 0})
-resource_phase = obj('resources', {'isa': 'PBXResourcesBuildPhase', 'buildActionMask': 2147483647, 'files': [asset_build], 'runOnlyForDeploymentPostprocessing': 0})
+resource_phase = obj('resources', {'isa': 'PBXResourcesBuildPhase', 'buildActionMask': 2147483647, 'files': [asset_build, privacy_build], 'runOnlyForDeploymentPostprocessing': 0})
 framework_phase = obj('frameworks', {'isa': 'PBXFrameworksBuildPhase', 'buildActionMask': 2147483647, 'files': [], 'runOnlyForDeploymentPostprocessing': 0})
 
 config_ref = obj('base-config', {'isa': 'PBXFileReference', 'lastKnownFileType': 'text.xcconfig', 'path': 'Config/Base.xcconfig', 'sourceTree': '<group>'})
@@ -48,7 +51,8 @@ for config in ['Debug', 'Release']:
         'SUPPORTED_PLATFORMS': 'iphoneos iphonesimulator', 'SUPPORTS_MACCATALYST': 'NO',
         'INFOPLIST_KEY_UISupportedInterfaceOrientations': 'UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight',
         'INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad': 'UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight',
-        'MARKETING_VERSION': '0.2.0', 'CURRENT_PROJECT_VERSION': '2', 'CODE_SIGN_STYLE': 'Automatic',
+        'MARKETING_VERSION': '0.2.0', 'CURRENT_PROJECT_VERSION': '4', 'CODE_SIGN_STYLE': 'Automatic', 'DEVELOPMENT_TEAM': '3T3328WVBE',
+        'ASSETCATALOG_COMPILER_APPICON_NAME': 'AppIcon',
         'LD_RUNPATH_SEARCH_PATHS': '$(inherited) @executable_path/Frameworks',
         'ENABLE_PREVIEWS': 'YES',
     }}))

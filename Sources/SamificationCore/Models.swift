@@ -40,6 +40,30 @@ public struct Medication: Identifiable, Codable, Equatable, Sendable {
         if !confirmed { errors.append("Clinician confirmation required.") }
         return errors
     }
+    private enum CodingKeys: String, CodingKey {
+        case id, code, name, originalName, doseMG, strengthMG, periods, directions
+        case sourceDetails, sourceRow, imageName, imageStrengthMG, included, exclusionReason, confirmed
+    }
+    public init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        // The backend requires these fields in every confirmed answer key.
+        id = try values.decode(UUID.self, forKey: .id)
+        code = try values.decode(String.self, forKey: .code)
+        name = try values.decode(String.self, forKey: .name)
+        originalName = try values.decode(String.self, forKey: .originalName)
+        doseMG = try values.decode(Double.self, forKey: .doseMG)
+        strengthMG = try values.decode(Double.self, forKey: .strengthMG)
+        periods = try values.decode(Set<DayPeriod>.self, forKey: .periods)
+        included = try values.decode(Bool.self, forKey: .included)
+        confirmed = try values.decode(Bool.self, forKey: .confirmed)
+        // Display/provenance fields are optional in the server snapshot schema.
+        directions = try values.decodeIfPresent(String.self, forKey: .directions) ?? ""
+        sourceDetails = try values.decodeIfPresent(String.self, forKey: .sourceDetails) ?? ""
+        sourceRow = try values.decodeIfPresent(Int.self, forKey: .sourceRow) ?? 0
+        imageName = try values.decodeIfPresent(String.self, forKey: .imageName)
+        imageStrengthMG = try values.decodeIfPresent(Double.self, forKey: .imageStrengthMG)
+        exclusionReason = try values.decodeIfPresent(String.self, forKey: .exclusionReason)
+    }
     public init(id: UUID = UUID(), code: String, name: String, doseMG: Double, strengthMG: Double, periods: Set<DayPeriod>, directions: String = "", sourceDetails: String = "", sourceRow: Int = 0, imageName: String? = nil, imageStrengthMG: Double? = nil, included: Bool = true, exclusionReason: String? = nil, confirmed: Bool = false) {
         self.id = id; self.code = code; self.name = name; self.originalName = name; self.doseMG = doseMG; self.strengthMG = strengthMG; self.periods = periods; self.directions = directions; self.sourceDetails = sourceDetails; self.sourceRow = sourceRow; self.imageName = imageName; self.imageStrengthMG = imageStrengthMG; self.included = included; self.exclusionReason = exclusionReason; self.confirmed = confirmed
     }

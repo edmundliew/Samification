@@ -1,3 +1,7 @@
+# Release preparation — 9 November 2026
+
+**50 core tests pass.** Fixed native decoding of backend-confirmed medication snapshots that omit optional display/provenance fields; answer-key fields remain required and malformed fields are rejected. Native clinician sign-in/session restoration, admission/regimen loading, patient-code issuance, iPad pairing and challenge delivery were observed with the isolated fictional reviewer ward. Full patient submission/clinician results and final archive validation remain pending. See [APP_REVIEW.md](APP_REVIEW.md) for the release checkpoint. Mac lock interrupted UI checks; no upload or TestFlight release is claimed.
+
 # Separate workspace checkpoint — 8 November 2026
 
 The current entry/navigation validation is recorded in [WORKSPACES.md](WORKSPACES.md). Native Xcode build/launch and welcome → patient/staff/demo paths passed on iPhone 17e. All 48 core tests and five mocked admin portal tests pass. The portal is local-only; valid native/portal sign-in, automatic approved-clinician routing and Cloudflare deployment remain unverified. No role grants or production clinical changes were made.
