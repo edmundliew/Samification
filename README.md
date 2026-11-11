@@ -8,7 +8,7 @@ Staff email/password sign-in and secure session restoration are implemented. Fir
 
 The isolated demo retains CSV review, four preconfirmed fictional medicines, clinician/patient previews, the visual tray game and results. Role previews never authorize connected access. See [workspace design and validation](docs/WORKSPACES.md), [validation](docs/VALIDATION.md), and [portal setup](web/admin/README.md). Build 0.2.0 (6) passed Apple validation and is **Testing** in the **Samification Internal** TestFlight group. Public App Store submission has not occurred.
 
-The next build, 0.2.0 (8), adds a shared step-by-step tester Help guide before sign-in and in the patient and clinician workspaces. The guide has been verified in the iPad simulator; TestFlight upload remains pending and the live build is still 6.
+The shared tester Help guide is available before sign-in and in the patient and clinician workspaces. Xcode archived it as 0.2.0 (8), and App Store Connect processed the distribution upload as 0.2.0 (9). Build 9 is available in Samification Internal and selected on the App Store draft. See [the release checkpoint](docs/APP_STORE_METADATA.md#app-store-connect-upload-and-review-media).
 
 ## Open and run
 

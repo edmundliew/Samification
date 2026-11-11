@@ -1,4 +1,4 @@
-# Store and TestFlight copy — build 8 preparation
+# Store and TestFlight copy — 0.2.0
 
 Not submitted. Use the private App Review Information fields for the review username/password. Never put the password or a patient pairing code into public text, this file, screenshots or release notes.
 
@@ -61,11 +61,11 @@ Technical privacy inventory for preparing those declarations: staff names/emails
 
 ## Build 8 preparation checkpoint — 9 November 2026
 
-The Help guide is included in native build 0.2.0 (8). It is accessible before sign-in, from the patient Help tab, clinician Help tab and demo guide. The iPad simulator displayed the guide and clinician code-generation steps successfully. Build 7 was a source checkpoint and was not uploaded.
+The Help guide is included in native build 0.2.0 (8). It is accessible before sign-in, from the patient Help tab, clinician Help tab and demo guide. The iPad simulator displayed the guide and clinician code-generation steps successfully.
 
-App Store Connect version 0.2.0 has promotional text, description, keywords, copyright and owner contact name/email entered. The save was rejected because the private review phone is missing; these new edits are not yet confirmed persisted. Do not navigate away until saved. Existing protected reviewer credentials remain present.
+App Store Connect version 0.2.0 has promotional text, description, keywords, copyright and owner contact name/email entered. The listing copy, contact fields and protected reviewer credentials were present in the saved draft on 11 November 2026.
 
-Owner approved public support/privacy contact: edmund_liew@live.com. Private review name: Yong Hock Liew. The actual phone number is still requested. Do not use a fabricated phone, placeholder policy URL, expired game code or unsupported privacy declaration.
+Owner approved public support/privacy contact: edmund_liew@live.com. Private review name: Yong Hock Liew. The private App Review phone field is populated. The public Support URL is still blank.
 
 Required product screenshots: iPhone large-display set (for example 1320×2868) and iPad 13-inch set (2064×2752 or 2048×2732). The 1640×2360 iPad A16 Help capture is useful review evidence but does not satisfy the required 13-inch set. An App Review walkthrough attachment is separate from the optional public 15–30 second App Preview. Capture real app screens using fictional records and exclude credentials/codes.
 
@@ -78,4 +78,8 @@ Apple references checked 9 November 2026:
 - https://developer.apple.com/app-store/review/guidelines/
 
 
-Media/archive outcome: The iPad A16 Help page and clinician walkthrough were observed in the native simulator. One original 1640×2360 Help screenshot was saved. Repeated native-control timeouts prevented completion of the 13-inch simulator captures, walkthrough video and archive distribution. Archive was started in Xcode but no success/upload outcome was observed. No video, complete required screenshot set, build 8 upload, review submission or approval is claimed. Current live internal TestFlight build remains 0.2.0 (6).
+## App Store Connect upload and review media
+
+Xcode archived 0.2.0 (8) from source commit `d495477` and uploaded it using App Store Connect distribution. Apple recorded the uploaded artifact as **0.2.0 (9)** and displayed **Ready to Submit** on 9 November 2026. The separate build 8 was marked Internal and displayed Testing. Use build 9 for the App Store version. On 11 November 2026, App Store Connect confirmed build 9 as **Testing** in **Samification Internal** and as the selected build on the saved iOS 0.2.0 draft.
+
+The original 13-inch iPad simulator capture set contains seven 2064 × 2752 PNGs. The 4:15 MP4 walkthrough shows the fictional local demo, including assignment, incorrect feedback, a hint, correction, shared results, attempt history and the Help guide. The capture files are in `outputs/app-review-build8` beside the repository. App Store Connect has the MP4 saved under App Review Information. The product page has five 2064 × 2752 iPad screenshots and three 1320 × 2868 iPhone screenshots. The version remains Prepare for Submission.
