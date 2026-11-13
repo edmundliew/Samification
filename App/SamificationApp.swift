@@ -164,15 +164,15 @@ private struct WelcomeView: View {
     @State private var showingHelp = false
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
-                Image(systemName: "pills.fill").font(.system(size: 44)).foregroundStyle(.teal).accessibilityHidden(true)
-                Text("Samification").font(.largeTitle.bold())
-                Text("Build confidence with your medicines.").font(.title3).foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 16) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Image(systemName: "pills.fill").font(.system(size: 36)).foregroundStyle(.teal).accessibilityHidden(true)
+                    Text("Samification").font(.largeTitle.bold()).accessibilityAddTraits(.isHeader)
+                    Text("Build confidence with your medicines.").font(.title3).foregroundStyle(.secondary)
+                }
+                demoCard
                 entryButton("Play Samification", detail: "For patients · Enter the game code from your care team", symbol: "qrcode", action: onPatient)
                 entryButton("Staff sign-in", detail: "For clinicians · Access your ward and patients", symbol: "person.crop.rectangle", action: onStaff)
-                Divider()
-                Button("Try demo", systemImage: "play.circle", action: onDemo)
-                Text("Explore with fictional records. No sign-in or pairing code needed.").font(.caption).foregroundStyle(.secondary)
                 Button("Help · Start here", systemImage: "questionmark.circle") { showingHelp = true }
                 Text("Development build · Use fictional data only").font(.caption).foregroundStyle(.secondary)
             }.padding(28).frame(maxWidth: 540, alignment: .leading).frame(maxWidth: .infinity)
@@ -184,6 +184,52 @@ private struct WelcomeView: View {
             }
         }
     }
+    private var demoCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Build a practice tray")
+                    .font(.headline)
+                    .accessibilityAddTraits(.isHeader)
+                Text("Fictional records. No sign-in or game code needed.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+            HStack(spacing: 5) {
+                ForEach(DayPeriod.allCases) { period in
+                    HStack(spacing: 5) {
+                        Image(systemName: period.symbol)
+                        switch period {
+                        case .morning: Text("A").fontWeight(.semibold)
+                        case .bedtime: Text("B").fontWeight(.semibold)
+                        default: EmptyView()
+                        }
+                    }
+                    .font(.caption)
+                    .foregroundStyle(.primary)
+                    .frame(maxWidth: .infinity, minHeight: 30)
+                    .background(.background, in: RoundedRectangle(cornerRadius: 7))
+                }
+            }
+            .accessibilityHidden(true)
+            Button(action: onDemo) {
+                HStack(spacing: 10) {
+                    Label("Try demo", systemImage: "play.circle.fill")
+                    Spacer(minLength: 8)
+                    Image(systemName: "arrow.right").accessibilityHidden(true)
+                }
+                .font(.title3.bold())
+                .frame(minHeight: 44)
+                .padding(.horizontal, 8)
+            }
+            .buttonStyle(.borderedProminent)
+            .buttonBorderShape(.roundedRectangle(radius: 14))
+            .tint(Color(red: 0, green: 0.45, blue: 0.49))
+            .accessibilityHint("Opens the fictional demo")
+        }
+        .padding(14)
+        .background(.teal.opacity(0.09), in: RoundedRectangle(cornerRadius: 20))
+    }
+
     private func entryButton(_ title: String, detail: String, symbol: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             VStack(alignment: .leading, spacing: 10) {
